@@ -6,7 +6,7 @@ import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   return {
-    base: '/tax-record/',
+    base: '/TaxRecord/',
     plugins: [
       react(),
       tailwindcss(),
@@ -14,15 +14,15 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
-          id: '/tax-record/',
+          id: '/TaxRecord/',
           name: 'Tax Record – ระบบบันทึกภาษีซื้อและภาษีขาย',
           short_name: 'Tax Record',
           description: 'ระบบบันทึกภาษีซื้อและภาษีขายแบบ Local-first / Offline ใช้งานฟรี จัดเก็บข้อมูลในเครื่องด้วย IndexedDB',
           theme_color: '#0f766e',
           background_color: '#f8fafc',
           display: 'standalone',
-          start_url: '/tax-record/',
-          scope: '/tax-record/',
+          start_url: '/TaxRecord/',
+          scope: '/TaxRecord/',
           icons: [
             {
               src: 'pwa-192x192.png',
