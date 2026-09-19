@@ -1,0 +1,6 @@
+{
+  "name": "Tax Record – ระบบบันทึกภาษีซื้อและภาษีขาย",
+  "description": "ระบบบันทึกภาษีซื้อและภาษีขายแบบ Local-first / Offline ใช้งานฟรี จัดเก็บข้อมูลในเครื่องด้วย IndexedDB พร้อมพิมพ์รายงานและส่งออก Excel/PDF",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
