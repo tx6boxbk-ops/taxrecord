@@ -5,10 +5,10 @@ import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(({ command }) => {
-  // Use '/TaxRecord/' for production build (GitHub Pages deployment)
+  // Use '/taxrecord/' for production build (GitHub Pages deployment matches repo name: taxrecord)
   // Use '/' during local development so AI Studio live preview works seamlessly
   const isBuild = command === 'build';
-  const base = process.env.BASE_URL || (isBuild ? '/TaxRecord/' : '/');
+  const base = process.env.BASE_URL || (isBuild ? '/taxrecord/' : '/');
 
   return {
     base,
