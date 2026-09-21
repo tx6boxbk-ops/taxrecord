@@ -8,7 +8,7 @@ export async function seedSampleData(): Promise<void> {
   await saveBusinessSettings({
     businessName: 'บริษัท สยามดิจิทัล โซลูชั่นส์ จำกัด',
     legalName: 'บริษัท สยามดิจิทัล โซลูชั่นส์ จำกัด',
-    taxpayerId: '0105558012345',
+    taxpayerId: '0105558012349',
     branchType: 'HEAD',
     branchNumber: '00000',
     address: '123/45 ถนนสุขุมวิท แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110',
@@ -20,7 +20,7 @@ export async function seedSampleData(): Promise<void> {
   const sup1 = await createSupplier({
     displayName: 'บริษัท ออฟฟิศเมท (ไทย) จำกัด',
     legalName: 'บริษัท ออฟฟิศเมท (ไทย) จำกัด',
-    taxpayerId: '0105539000123',
+    taxpayerId: '0105539000128',
     headOffice: true,
     branchNumber: '00000',
     address: 'อาคารวิชาญพานิชย์ 24 ถนนสีลม บางรัก กรุงเทพฯ',
@@ -31,7 +31,7 @@ export async function seedSampleData(): Promise<void> {
   const sup2 = await createSupplier({
     displayName: 'บริษัท ทรู อินเทอร์เน็ต คอร์ปอเรชั่น จำกัด',
     legalName: 'บริษัท ทรู อินเทอร์เน็ต คอร์ปอเรชั่น จำกัด',
-    taxpayerId: '0105541000456',
+    taxpayerId: '0105541000458',
     headOffice: false,
     branchNumber: '00003',
     address: '18 อาคารทรู ทาวเวอร์ ถนนรัชดาภิเษก ห้วยขวาง กรุงเทพฯ',
@@ -42,7 +42,7 @@ export async function seedSampleData(): Promise<void> {
   const sup3 = await createSupplier({
     displayName: 'บริษัท แอดวานซ์ ไวร์เลส เน็ทเวอร์ค จำกัด',
     legalName: 'บริษัท แอดวานซ์ ไวร์เลส เน็ทเวอร์ค จำกัด',
-    taxpayerId: '0105548000789',
+    taxpayerId: '0105548000780',
     headOffice: true,
     branchNumber: '00000',
     address: '414 ถนนพหลโยธิน แขวงสามเสนใน เขตพญาไท กรุงเทพฯ',
@@ -54,7 +54,7 @@ export async function seedSampleData(): Promise<void> {
   const cust1 = await createCustomer({
     displayName: 'บริษัท กรุงเทพ ซอฟต์แวร์ เฮ้าส์ จำกัด',
     legalName: 'บริษัท กรุงเทพ ซอฟต์แวร์ เฮ้าส์ จำกัด',
-    taxpayerId: '0105560000444',
+    taxpayerId: '0105560000441',
     headOffice: true,
     branchNumber: '00000',
     address: '99/1 ซอยอารีย์ พญาไท กรุงเทพฯ',
@@ -65,7 +65,7 @@ export async function seedSampleData(): Promise<void> {
   const cust2 = await createCustomer({
     displayName: 'บริษัท สยาม พรีเมียม รีเทล จำกัด',
     legalName: 'บริษัท สยาม พรีเมียม รีเทล จำกัด',
-    taxpayerId: '0105559000555',
+    taxpayerId: '0105559000557',
     headOffice: false,
     branchNumber: '00002',
     address: '888 ถนนพระราม 1 ปทุมวัน กรุงเทพฯ',

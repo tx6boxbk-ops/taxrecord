@@ -121,15 +121,19 @@ export const SystemTestPage: React.FC = () => {
 
     // Test 4: Thai Tax ID Checksum Validation
     try {
-      // Valid tax ID checksum
-      const valid13 = '0105558012345';
-      const isValid = isValidThaiTaxId(valid13);
+      // Test both valid checksum (ends with 9) and invalid checksum (ends with 5)
+      const valid13 = '0105558012349';
+      const invalid13 = '0105558012345';
+      const isCorrectValid = isValidThaiTaxId(valid13);
+      const isCorrectInvalid = !isValidThaiTaxId(invalid13);
+      const isWorkingProperly = isCorrectValid && isCorrectInvalid;
+
       newResults[3] = {
         name: 'Thai Tax ID Checksum Validation',
-        status: isValid ? 'PASS' : 'FAIL',
-        detail: `อัลกอริทึม Mod 11 ตรวจสอบ 13 หลักทำงานถูกต้อง (ผลลัพธ์: ${
-          isValid ? 'ผ่าน' : 'ไม่ผ่าน'
-        })`,
+        status: isWorkingProperly ? 'PASS' : 'FAIL',
+        detail: isWorkingProperly
+          ? 'อัลกอริทึม Mod 11 ตรวจสอบ 13 หลักทำงานถูกต้องแม่นยำ (ตรวจจับเลขถูกต้องและปฏิเสธเลขที่ผิดได้สมบูรณ์)'
+          : `การตรวจสอบ Mod 11 ผิดพลาด (ผลลัพธ์: ${isCorrectValid ? 'ผ่าน' : 'ไม่ผ่าน'})`,
       };
     } catch (e: any) {
       newResults[3] = {
