@@ -25,6 +25,7 @@ import { SalesTaxRecord } from '../types';
 import {
   calculateVatExclusive,
   calculateVatInclusive,
+  roundToTwoDecimals,
   formatCurrency,
   parseAmount,
 } from '../utils/calculation';
@@ -78,10 +79,10 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
   const [customerBranchType, setCustomerBranchType] = useState<'HEAD' | 'BRANCH'>('HEAD');
   const [customerBranchNumber, setCustomerBranchNumber] = useState('00000');
 
-  const [taxableAmountStr, setTaxableAmountStr] = useState('2000.00');
+  const [taxableAmountStr, setTaxableAmountStr] = useState('');
   const [vatRateStr, setVatRateStr] = useState('7');
-  const [vatAmountStr, setVatAmountStr] = useState('140.00');
-  const [totalAmountStr, setTotalAmountStr] = useState('2140.00');
+  const [vatAmountStr, setVatAmountStr] = useState('');
+  const [totalAmountStr, setTotalAmountStr] = useState('');
   const [calcMode, setCalcMode] = useState<'EXCLUSIVE' | 'INCLUSIVE'>('EXCLUSIVE');
   const [note, setNote] = useState('');
   const [formError, setFormError] = useState('');
@@ -120,6 +121,11 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
 
   const handleTaxableChange = (valStr: string) => {
     setTaxableAmountStr(valStr);
+    if (!valStr.trim()) {
+      setVatAmountStr('');
+      setTotalAmountStr('');
+      return;
+    }
     const taxable = parseAmount(valStr);
     const rate = parseAmount(vatRateStr);
     const calc = calculateVatExclusive(taxable, rate);
@@ -129,6 +135,11 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
 
   const handleTotalChange = (valStr: string) => {
     setTotalAmountStr(valStr);
+    if (!valStr.trim()) {
+      setTaxableAmountStr('');
+      setVatAmountStr('');
+      return;
+    }
     const total = parseAmount(valStr);
     const rate = parseAmount(vatRateStr);
     const calc = calculateVatInclusive(total, rate);
@@ -140,15 +151,25 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
     setVatRateStr(rateStr);
     const rate = parseAmount(rateStr);
     if (calcMode === 'EXCLUSIVE') {
-      const taxable = parseAmount(taxableAmountStr);
-      const calc = calculateVatExclusive(taxable, rate);
-      setVatAmountStr(calc.vatAmount.toFixed(2));
-      setTotalAmountStr(calc.totalAmount.toFixed(2));
+      if (!taxableAmountStr.trim()) {
+        setVatAmountStr('');
+        setTotalAmountStr('');
+      } else {
+        const taxable = parseAmount(taxableAmountStr);
+        const calc = calculateVatExclusive(taxable, rate);
+        setVatAmountStr(calc.vatAmount.toFixed(2));
+        setTotalAmountStr(calc.totalAmount.toFixed(2));
+      }
     } else {
-      const total = parseAmount(totalAmountStr);
-      const calc = calculateVatInclusive(total, rate);
-      setTaxableAmountStr(calc.taxableAmount.toFixed(2));
-      setVatAmountStr(calc.vatAmount.toFixed(2));
+      if (!totalAmountStr.trim()) {
+        setTaxableAmountStr('');
+        setVatAmountStr('');
+      } else {
+        const total = parseAmount(totalAmountStr);
+        const calc = calculateVatInclusive(total, rate);
+        setTaxableAmountStr(calc.taxableAmount.toFixed(2));
+        setVatAmountStr(calc.vatAmount.toFixed(2));
+      }
     }
   };
 
@@ -166,15 +187,25 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
       setVatRateStr(customerRate.toString());
 
       if (calcMode === 'EXCLUSIVE') {
-        const taxable = parseAmount(taxableAmountStr);
-        const calc = calculateVatExclusive(taxable, customerRate);
-        setVatAmountStr(calc.vatAmount.toFixed(2));
-        setTotalAmountStr(calc.totalAmount.toFixed(2));
+        if (!taxableAmountStr.trim()) {
+          setVatAmountStr('');
+          setTotalAmountStr('');
+        } else {
+          const taxable = parseAmount(taxableAmountStr);
+          const calc = calculateVatExclusive(taxable, customerRate);
+          setVatAmountStr(calc.vatAmount.toFixed(2));
+          setTotalAmountStr(calc.totalAmount.toFixed(2));
+        }
       } else {
-        const total = parseAmount(totalAmountStr);
-        const calc = calculateVatInclusive(total, customerRate);
-        setTaxableAmountStr(calc.taxableAmount.toFixed(2));
-        setVatAmountStr(calc.vatAmount.toFixed(2));
+        if (!totalAmountStr.trim()) {
+          setTaxableAmountStr('');
+          setVatAmountStr('');
+        } else {
+          const total = parseAmount(totalAmountStr);
+          const calc = calculateVatInclusive(total, customerRate);
+          setTaxableAmountStr(calc.taxableAmount.toFixed(2));
+          setVatAmountStr(calc.vatAmount.toFixed(2));
+        }
       }
     }
   };
@@ -190,10 +221,10 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
     setCustomerBranchType('HEAD');
     setCustomerBranchNumber('00000');
 
-    setTaxableAmountStr('2000.00');
+    setTaxableAmountStr('');
     setVatRateStr('7');
-    setVatAmountStr('140.00');
-    setTotalAmountStr('2140.00');
+    setVatAmountStr('');
+    setTotalAmountStr('');
     setCalcMode('EXCLUSIVE');
     setNote('');
     setFormError('');
@@ -237,6 +268,11 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
 
     if (!customerName.trim()) {
       setFormError('กรุณาเลือกหรือกรอกชื่อผู้ซื้อ / ผู้รับบริการ');
+      return;
+    }
+
+    if (!taxableAmountStr.trim()) {
+      setFormError('กรุณาระบุมูลค่าสินค้า/บริการ');
       return;
     }
 
@@ -839,6 +875,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                       type="number"
                       step="0.01"
                       required
+                      placeholder="0.00"
                       value={taxableAmountStr}
                       onChange={(e) => handleTaxableChange(e.target.value)}
                       className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-right focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
@@ -857,8 +894,18 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                     <input
                       type="number"
                       step="0.01"
+                      placeholder="0.00"
                       value={vatAmountStr}
-                      onChange={(e) => setVatAmountStr(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setVatAmountStr(val);
+                        if (val.trim() && taxableAmountStr.trim()) {
+                          const taxable = parseAmount(taxableAmountStr);
+                          const vat = parseAmount(val);
+                          const total = roundToTwoDecimals(taxable + Math.abs(vat));
+                          setTotalAmountStr(total.toFixed(2));
+                        }
+                      }}
                       className="w-full text-xs px-3 py-2 bg-indigo-50 border border-indigo-300 text-indigo-900 rounded-lg font-mono text-right font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
                     />
                   </div>
@@ -870,6 +917,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                     <input
                       type="number"
                       step="0.01"
+                      placeholder="0.00"
                       value={totalAmountStr}
                       onChange={(e) => handleTotalChange(e.target.value)}
                       className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-right font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-600"

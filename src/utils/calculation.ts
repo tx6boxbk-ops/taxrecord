@@ -4,14 +4,14 @@
 
 export function roundToTwoDecimals(value: number): number {
   if (isNaN(value) || !isFinite(value)) return 0;
-  // Use Math.round with epsilon to avoid standard IEEE 754 precision issues
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  const sign = value < 0 ? -1 : 1;
+  return (sign * Math.round((Math.abs(value) + Number.EPSILON) * 100)) / 100;
 }
 
 /**
  * Calculates VAT and Total Amount from a Taxable Base Amount (VAT Exclusive)
  * VAT = taxableAmount * vatRate / 100
- * Total = taxableAmount + VAT
+ * Total = taxableAmount + |VAT| (ยอดรวมทั้งสิ้นของประเภท VAT ที่ติดลบ จะต้องเป็น มูลค่าสินค้า/บริการ + ภาษีมูลค่าเพิ่ม)
  */
 export function calculateVatExclusive(
   taxableAmount: number,
@@ -21,15 +21,15 @@ export function calculateVatExclusive(
   const cleanRate = isNaN(vatRate) ? 0 : vatRate;
 
   const vatAmount = roundToTwoDecimals((cleanTaxable * cleanRate) / 100);
-  const totalAmount = roundToTwoDecimals(cleanTaxable + vatAmount);
+  const totalAmount = roundToTwoDecimals(cleanTaxable + Math.abs(vatAmount));
 
   return { vatAmount, totalAmount };
 }
 
 /**
  * Extracts Taxable Base and VAT from a Total Amount (VAT Inclusive)
- * Taxable = totalAmount * 100 / (100 + vatRate)
- * VAT = totalAmount - Taxable
+ * Taxable = totalAmount * 100 / (100 + |vatRate|)
+ * VAT = cleanRate < 0 ? -rawVat : rawVat
  */
 export function calculateVatInclusive(
   totalAmount: number,
@@ -38,12 +38,14 @@ export function calculateVatInclusive(
   const cleanTotal = Math.max(0, totalAmount || 0);
   const cleanRate = isNaN(vatRate) ? 0 : vatRate;
 
-  const denominator = 100 + cleanRate;
+  const absRate = Math.abs(cleanRate);
+  const denominator = 100 + absRate;
   const taxableAmount =
     denominator !== 0
       ? roundToTwoDecimals((cleanTotal * 100) / denominator)
       : cleanTotal;
-  const vatAmount = roundToTwoDecimals(cleanTotal - taxableAmount);
+  const rawVat = roundToTwoDecimals(cleanTotal - taxableAmount);
+  const vatAmount = cleanRate < 0 ? -rawVat : rawVat;
 
   return { taxableAmount, vatAmount };
 }
