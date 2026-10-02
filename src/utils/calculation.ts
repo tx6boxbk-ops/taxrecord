@@ -18,7 +18,7 @@ export function calculateVatExclusive(
   vatRate: number = 7
 ): { vatAmount: number; totalAmount: number } {
   const cleanTaxable = Math.max(0, taxableAmount || 0);
-  const cleanRate = Math.max(0, vatRate || 0);
+  const cleanRate = isNaN(vatRate) ? 0 : vatRate;
 
   const vatAmount = roundToTwoDecimals((cleanTaxable * cleanRate) / 100);
   const totalAmount = roundToTwoDecimals(cleanTaxable + vatAmount);
@@ -36,9 +36,13 @@ export function calculateVatInclusive(
   vatRate: number = 7
 ): { taxableAmount: number; vatAmount: number } {
   const cleanTotal = Math.max(0, totalAmount || 0);
-  const cleanRate = Math.max(0, vatRate || 0);
+  const cleanRate = isNaN(vatRate) ? 0 : vatRate;
 
-  const taxableAmount = roundToTwoDecimals((cleanTotal * 100) / (100 + cleanRate));
+  const denominator = 100 + cleanRate;
+  const taxableAmount =
+    denominator !== 0
+      ? roundToTwoDecimals((cleanTotal * 100) / denominator)
+      : cleanTotal;
   const vatAmount = roundToTwoDecimals(cleanTotal - taxableAmount);
 
   return { taxableAmount, vatAmount };
