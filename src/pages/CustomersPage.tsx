@@ -187,7 +187,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ onShowToast }) => 
         <div>
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-indigo-700" />
-            <h2 className="text-xl font-bold text-slate-900">ผู้ซื้อ / ผู้รับบริการ (Customers)</h2>
+            <h2 className="text-xl font-bold text-slate-900">ลูกค้า (Customers)</h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
             สมุดรายชื่อลูกค้าสำหรับดึงข้อมูลลงในแบบฟอร์มภาษีขาย

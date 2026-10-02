@@ -181,7 +181,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ onShowToast }) => 
         <div>
           <div className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-teal-700" />
-            <h2 className="text-xl font-bold text-slate-900">ผู้ขาย / ผู้ให้บริการ (Suppliers)</h2>
+            <h2 className="text-xl font-bold text-slate-900">ร้านค้า (Suppliers)</h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
             สมุดรายชื่อคู่ค้าสำหรับดึงข้อมูลลงในแบบฟอร์มภาษีซื้อ
