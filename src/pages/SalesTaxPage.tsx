@@ -10,6 +10,8 @@ import {
   Calendar,
   Users,
   UserPlus,
+  MapPin,
+  Phone,
 } from 'lucide-react';
 import { db } from '../db/db';
 import {
@@ -18,7 +20,7 @@ import {
   deleteSalesTaxRecord,
   calculateSummary,
 } from '../services/taxService';
-import { createCustomer } from '../services/customerService';
+import { createCustomer, checkDuplicateCustomer } from '../services/customerService';
 import { SalesTaxRecord } from '../types';
 import {
   calculateVatExclusive,
@@ -26,6 +28,7 @@ import {
   formatCurrency,
   parseAmount,
 } from '../utils/calculation';
+import { formatBranchNumber } from '../utils/validation';
 import {
   formatThaiDateShort,
   getThaiMonthName,
@@ -55,9 +58,14 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
   // Quick Add Customer Modal State
   const [isQuickCustomerOpen, setIsQuickCustomerOpen] = useState(false);
   const [quickCustomerName, setQuickCustomerName] = useState('');
+  const [quickCustomerLegalName, setQuickCustomerLegalName] = useState('');
   const [quickCustomerTaxId, setQuickCustomerTaxId] = useState('');
   const [quickCustomerBranch, setQuickCustomerBranch] = useState('00000');
   const [quickCustomerHead, setQuickCustomerHead] = useState(true);
+  const [quickCustomerAddress, setQuickCustomerAddress] = useState('');
+  const [quickCustomerPhone, setQuickCustomerPhone] = useState('');
+  const [quickCustomerNote, setQuickCustomerNote] = useState('');
+  const [quickCustomerError, setQuickCustomerError] = useState('');
 
   // Form State
   const [taxDate, setTaxDate] = useState(getTodayDateString());
@@ -268,28 +276,66 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
     }
   };
 
+  const openAddCustomerModal = () => {
+    setQuickCustomerName('');
+    setQuickCustomerLegalName('');
+    setQuickCustomerTaxId('');
+    setQuickCustomerHead(true);
+    setQuickCustomerBranch('00000');
+    setQuickCustomerAddress('');
+    setQuickCustomerPhone('');
+    setQuickCustomerNote('');
+    setQuickCustomerError('');
+    setIsQuickCustomerOpen(true);
+  };
+
   const handleQuickCustomerSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickCustomerName.trim()) return;
+    setQuickCustomerError('');
+
+    const cleanDisplay = quickCustomerName.trim();
+    if (!cleanDisplay) {
+      setQuickCustomerError('กรุณากรอกชื่อผู้ซื้อ / ผู้รับบริการ');
+      return;
+    }
+
+    const cleanTaxId = quickCustomerTaxId.trim();
+    if (cleanTaxId && cleanTaxId.length !== 13) {
+      setQuickCustomerError('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก');
+      return;
+    }
+
+    const cleanBranch = quickCustomerHead ? '00000' : formatBranchNumber(quickCustomerBranch);
+
+    // Duplicate check with existing customers in the system
+    if (cleanTaxId) {
+      const isDuplicate = await checkDuplicateCustomer(cleanTaxId, cleanBranch);
+      if (isDuplicate) {
+        setQuickCustomerError(
+          `มีผู้ซื้อที่ใช้เลขผู้เสียภาษี ${cleanTaxId} สาขา ${cleanBranch} ในระบบแล้ว`
+        );
+        return;
+      }
+    }
 
     try {
       const newCust = await createCustomer({
-        displayName: quickCustomerName.trim(),
-        legalName: quickCustomerName.trim(),
-        taxpayerId: quickCustomerTaxId.trim(),
+        displayName: cleanDisplay,
+        legalName: quickCustomerLegalName.trim() || cleanDisplay,
+        taxpayerId: cleanTaxId,
         headOffice: quickCustomerHead,
-        branchNumber: quickCustomerHead ? '00000' : quickCustomerBranch.trim(),
-        address: '',
-        phone: '',
-        note: 'เพิ่มด่วนจากหน้าภาษีขาย',
+        branchNumber: cleanBranch,
+        address: quickCustomerAddress.trim(),
+        phone: quickCustomerPhone.trim(),
+        note: quickCustomerNote.trim(),
       });
 
       handleCustomerSelect(newCust.id);
       setIsQuickCustomerOpen(false);
-      onShowToast(`เพิ่มผู้ซื้อ "${newCust.displayName}" เรียบร้อยแล้ว`, 'success');
+      onShowToast(`เพิ่มผู้ซื้อ "${newCust.displayName}" เชื่อมต่อเข้าสู่ระบบเรียบร้อยแล้ว`, 'success');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'ไม่สามารถบันทึกผู้ซื้อได้';
-      setFormError(message);
+      setQuickCustomerError(message);
     }
   };
 
@@ -646,25 +692,26 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                   </h4>
                   <button
                     type="button"
-                    onClick={() => {
-                      setQuickCustomerName('');
-                      setQuickCustomerTaxId('');
-                      setQuickCustomerHead(true);
-                      setQuickCustomerBranch('00000');
-                      setIsQuickCustomerOpen(true);
-                    }}
-                    className="text-xs text-indigo-700 hover:text-indigo-800 font-semibold flex items-center gap-1 cursor-pointer"
+                    onClick={openAddCustomerModal}
+                    className="text-xs text-indigo-700 hover:text-indigo-800 font-semibold flex items-center gap-1.5 cursor-pointer bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 transition"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
-                    <span>+ เพิ่มผู้ซื้อรายใหม่</span>
+                    <span>+ เพิ่มผู้ซื้อ / ผู้รับบริการ (Customers)</span>
                   </button>
                 </div>
 
                 <div className="space-y-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      เลือกจากสมุดรายชื่อผู้ซื้อ
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        เลือกจากสมุดรายชื่อผู้ซื้อ
+                      </label>
+                      {customerId && customerId !== 'CUSTOM' && (
+                        <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
+                          <Users className="w-3 h-3" /> เชื่อมต่อกับข้อมูลผู้ซื้อในระบบ
+                        </span>
+                      )}
+                    </div>
                     <select
                       value={customerId}
                       onChange={(e) => handleCustomerSelect(e.target.value)}
@@ -673,7 +720,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                       <option value="">-- เลือกผู้ซื้อ หรือ กรอกเองด้านล่าง --</option>
                       {customers.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.displayName} (เลขผู้เสียภาษี: {c.taxpayerId || '-'})
+                          {c.displayName} {c.taxpayerId ? `(${c.taxpayerId})` : ''} - {c.headOffice ? 'สำนักงานใหญ่' : `สาขา ${c.branchNumber}`}
                         </option>
                       ))}
                     </select>
@@ -866,97 +913,189 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
         </div>
       )}
 
-      {/* Quick Add Customer Modal */}
+      {/* Customer Modal (Connected to Customers Directory) */}
       {isQuickCustomerOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h4 className="text-sm font-bold text-slate-900">เพิ่มผู้ซื้อด่วน</h4>
+          <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    เพิ่มผู้ซื้อ / ผู้รับบริการ (Customers)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    เชื่อมต่อและบันทึกเข้าสู่สมุดรายชื่อผู้ซื้อของระบบโดยตรง
+                  </p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsQuickCustomerOpen(false)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={handleQuickCustomerSave} className="space-y-3 mt-3">
+
+            <form onSubmit={handleQuickCustomerSave} className="p-5 space-y-3.5 overflow-y-auto flex-1">
+              {quickCustomerError && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700">
+                  {quickCustomerError}
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  ชื่อผู้ซื้อ <span className="text-rose-500">*</span>
+                  ชื่อที่แสดง / ชื่อลูกค้า <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="บริษัท / ชื่อลูกค้า..."
+                  placeholder="เช่น บริษัท สหพาณิชย์ จำกัด หรือ นายสมชาย ใจดี"
                   value={quickCustomerName}
                   onChange={(e) => setQuickCustomerName(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg"
+                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  เลขผู้เสียภาษี 13 หลัก
+                  ชื่อนิติบุคคล / ชื่อตามใบกำกับภาษี
+                </label>
+                <input
+                  type="text"
+                  placeholder="หากเหมือนชื่อที่แสดง สามารถเว้นว่างไว้ได้"
+                  value={quickCustomerLegalName}
+                  onChange={(e) => setQuickCustomerLegalName(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  เลขประจำตัวผู้เสียภาษี (13 หลัก)
                 </label>
                 <input
                   type="text"
                   maxLength={13}
-                  placeholder="010..."
+                  placeholder="เช่น 0105559876543"
                   value={quickCustomerTaxId}
                   onChange={(e) => setQuickCustomerTaxId(e.target.value.replace(/\D/g, ''))}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono"
+                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
                 />
+                <span className="text-[11px] text-slate-400 mt-0.5 block">
+                  จำนวน {quickCustomerTaxId.length} / 13 หลัก
+                </span>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setQuickCustomerHead(true)}
-                  className={`flex-1 py-1.5 text-xs rounded border cursor-pointer ${
-                    quickCustomerHead ? 'bg-indigo-700 text-white' : 'bg-slate-50'
-                  }`}
-                >
-                  สำนักงานใหญ่
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickCustomerHead(false)}
-                  className={`flex-1 py-1.5 text-xs rounded border cursor-pointer ${
-                    !quickCustomerHead ? 'bg-indigo-700 text-white' : 'bg-slate-50'
-                  }`}
-                >
-                  สาขา
-                </button>
-              </div>
-
-              {!quickCustomerHead && (
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    เลขที่สาขา
+                    สถานประกอบการ
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickCustomerHead(true);
+                        setQuickCustomerBranch('00000');
+                      }}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-lg border cursor-pointer transition ${
+                        quickCustomerHead
+                          ? 'bg-indigo-700 text-white border-indigo-700'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      สำนักงานใหญ่
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickCustomerHead(false)}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-lg border cursor-pointer transition ${
+                        !quickCustomerHead
+                          ? 'bg-indigo-700 text-white border-indigo-700'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      สาขา
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    เลขที่สาขา (เช่น 00001)
                   </label>
                   <input
                     type="text"
+                    disabled={quickCustomerHead}
                     maxLength={5}
+                    placeholder="00000"
                     value={quickCustomerBranch}
                     onChange={(e) => setQuickCustomerBranch(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono"
+                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono disabled:bg-slate-100 disabled:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
                   />
                 </div>
-              )}
+              </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <MapPin className="w-3.5 h-3.5 inline mr-1 text-slate-400" />
+                  ที่อยู่
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="ที่อยู่สถานประกอบการ"
+                  value={quickCustomerAddress}
+                  onChange={(e) => setQuickCustomerAddress(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-600 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <Phone className="w-3.5 h-3.5 inline mr-1 text-slate-400" />
+                  เบอร์โทรศัพท์
+                </label>
+                <input
+                  type="text"
+                  placeholder="เช่น 02-987-6543"
+                  value={quickCustomerPhone}
+                  onChange={(e) => setQuickCustomerPhone(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  หมายเหตุ
+                </label>
+                <input
+                  type="text"
+                  placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"
+                  value={quickCustomerNote}
+                  onChange={(e) => setQuickCustomerNote(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsQuickCustomerOpen(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs bg-indigo-700 text-white font-semibold rounded-lg cursor-pointer"
+                  className="px-4 py-1.5 text-xs bg-indigo-700 hover:bg-indigo-800 text-white font-semibold rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1.5"
                 >
-                  บันทึก
+                  <Users className="w-3.5 h-3.5" />
+                  <span>บันทึกเข้าสมุดรายชื่อผู้ซื้อ</span>
                 </button>
               </div>
             </form>
