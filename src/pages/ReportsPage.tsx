@@ -7,6 +7,7 @@ import {
   Calendar,
   Filter,
   AlertCircle,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { db } from '../db/db';
 import { getBusinessSettings } from '../services/settingsService';
@@ -25,21 +26,26 @@ import {
   toBuddhistYear,
 } from '../utils/thaiDate';
 import { formatCurrency } from '../utils/calculation';
+import { useMonth } from '../context/MonthContext';
 
 interface ReportsPageProps {
   onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
+  const {
+    selectedMonth,
+    selectedMonthNumber,
+    selectedYear,
+    setSelectedYear,
+    buddhistYear,
+    availableYears,
+  } = useMonth();
 
   const [reportType, setReportType] = useState<'PURCHASE' | 'SALES'>('PURCHASE');
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Live queries
+  // Live queries strictly filtered by global selected year and month
   const settings = useLiveQuery(() => getBusinessSettings());
 
   const purchaseRecords = useLiveQuery(
@@ -47,9 +53,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
       db.purchaseTaxRecords
         .where('taxYear')
         .equals(selectedYear)
-        .filter((r) => r.taxMonth === selectedMonth)
+        .filter((r) => r.taxMonth === selectedMonthNumber)
         .toArray(),
-    [selectedYear, selectedMonth]
+    [selectedYear, selectedMonthNumber]
   ) || [];
 
   const salesRecords = useLiveQuery(
@@ -57,9 +63,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
       db.salesTaxRecords
         .where('taxYear')
         .equals(selectedYear)
-        .filter((r) => r.taxMonth === selectedMonth)
+        .filter((r) => r.taxMonth === selectedMonthNumber)
         .toArray(),
-    [selectedYear, selectedMonth]
+    [selectedYear, selectedMonthNumber]
   ) || [];
 
   const activeRecords = reportType === 'PURCHASE' ? purchaseRecords : salesRecords;
@@ -73,14 +79,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
 
   const summary = calculateSummary(sortedRecords);
 
-  const availableYears = [
-    currentYear - 2,
-    currentYear - 1,
-    currentYear,
-    currentYear + 1,
-    currentYear + 2,
-  ];
-
   const handleExportExcel = async () => {
     if (!settings) {
       onShowToast('กรุณาตั้งค่าข้อมูลกิจการก่อนส่งออกรายงาน', 'error');
@@ -89,9 +87,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
     try {
       setIsExporting(true);
       if (reportType === 'PURCHASE') {
-        exportPurchaseTaxToExcel(purchaseRecords, settings, selectedYear, selectedMonth);
+        exportPurchaseTaxToExcel(purchaseRecords, settings, selectedYear, selectedMonthNumber);
       } else {
-        exportSalesTaxToExcel(salesRecords, settings, selectedYear, selectedMonth);
+        exportSalesTaxToExcel(salesRecords, settings, selectedYear, selectedMonthNumber);
       }
       onShowToast('ส่งออกไฟล์ Excel สำเร็จแล้ว', 'success');
     } catch (err: unknown) {
@@ -110,9 +108,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
     try {
       setIsExporting(true);
       if (reportType === 'PURCHASE') {
-        await exportPurchaseTaxToPdf(purchaseRecords, settings, selectedYear, selectedMonth);
+        await exportPurchaseTaxToPdf(purchaseRecords, settings, selectedYear, selectedMonthNumber);
       } else {
-        await exportSalesTaxToPdf(salesRecords, settings, selectedYear, selectedMonth);
+        await exportSalesTaxToPdf(salesRecords, settings, selectedYear, selectedMonthNumber);
       }
       onShowToast('ดาวน์โหลดเอกสาร PDF สำเร็จแล้ว', 'success');
     } catch (err: unknown) {
@@ -228,21 +226,13 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              เดือนภาษี
+              รอบเดือนภาษี (จากชีตด้านล่าง)
             </label>
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs">
-              <Filter className="w-4 h-4 text-slate-500" />
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="w-full bg-transparent font-semibold text-slate-800 focus:outline-hidden cursor-pointer"
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    {getThaiMonthName(m)}
-                  </option>
-                ))}
-              </select>
+            <div className="flex items-center gap-2 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200 text-xs">
+              <FileSpreadsheet className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span className="font-bold text-emerald-900 font-mono">
+                {selectedMonth} พ.ศ. {buddhistYear}
+              </span>
             </div>
           </div>
         </div>
@@ -268,7 +258,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
               {reportType === 'PURCHASE' ? 'รายงานภาษีซื้อ' : 'รายงานภาษีขาย'}
             </h1>
             <p className="text-xs font-medium text-slate-600 mt-1">
-              เดือนภาษี {getThaiMonthName(selectedMonth)} พ.ศ. {toBuddhistYear(selectedYear)}
+              เดือนภาษี {selectedMonth} พ.ศ. {buddhistYear}
             </p>
           </div>
 

@@ -8,6 +8,7 @@ import {
   Upload,
   Trash2,
   Sparkles,
+  Hash,
 } from 'lucide-react';
 import { resetDatabase } from '../db/db';
 import {
@@ -26,13 +27,20 @@ import { BackupData, BackupPreview } from '../types';
 import { formatBranchNumber } from '../utils/validation';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { seedSampleData } from '../utils/seedData';
+import { InvoiceNumberSettingsSection } from '../components/InvoiceNumberSettingsSection';
 
 interface SettingsPageProps {
   onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  initialTab?: 'profile' | 'invoices' | 'backup';
 }
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ onShowToast }) => {
+export const SettingsPage: React.FC<SettingsPageProps> = ({ onShowToast, initialTab }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'profile' | 'invoices' | 'backup'>(
+    initialTab || 'profile'
+  );
 
   // Form State
   const [businessName, setBusinessName] = useState('');
@@ -193,18 +201,71 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onShowToast }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Navigation Tabs */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-2">
-          <Settings className="w-5 h-5 text-teal-700" />
-          <h2 className="text-xl font-bold text-slate-900">การตั้งค่าระบบและฐานข้อมูล</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Settings className="w-5 h-5 text-teal-700" />
+              <h2 className="text-xl font-bold text-slate-900">การตั้งค่าระบบและฐานข้อมูล</h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              ตั้งค่าข้อมูลกิจการ กำหนดเลขที่ใบกำกับภาษีอัตโนมัติแยกตามเดือน สำรองและกู้คืนข้อมูล
+            </p>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold flex-wrap">
+            <button
+              type="button"
+              onClick={() => setActiveTab('profile')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeTab === 'profile'
+                  ? 'bg-white text-teal-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5 text-teal-700" />
+              <span>ข้อมูลกิจการ</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('invoices')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeTab === 'invoices'
+                  ? 'bg-white text-indigo-900 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Hash className="w-3.5 h-3.5 text-indigo-700" />
+              <span>ตั้งค่าเลขใบกำกับภาษี</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('backup')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeTab === 'backup'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5 text-slate-700" />
+              <span>สำรอง / กู้คืนข้อมูล</span>
+            </button>
+          </div>
         </div>
-        <p className="text-xs text-slate-500 mt-1">
-          ตั้งค่าข้อมูลกิจการสำหรับหัวรายงานภาษี สำรองและกู้คืนข้อมูลฐานข้อมูลออฟไลน์
-        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Tab: Invoice Numbers by Month */}
+      {activeTab === 'invoices' && (
+        <InvoiceNumberSettingsSection onShowToast={onShowToast} />
+      )}
+
+      {/* Tab: Profile & Backup */}
+      {activeTab !== 'invoices' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Business Settings Form */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-2xs p-6">
           <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-200">
@@ -453,6 +514,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onShowToast }) => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Restore Strategy Selection Modal */}
       {restoreModalOpen && pendingRestoreData && (

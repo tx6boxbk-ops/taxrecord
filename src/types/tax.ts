@@ -56,3 +56,17 @@ export interface TaxSummary {
   vatAmount: number;
   totalAmount: number;
 }
+
+export interface MonthTaxData {
+  monthName: string; // e.g. "มกราคม"
+  monthNumber: number; // 1 - 12
+  year: number; // Gregorian year
+  buddhistYear: number; // Buddhist Era year
+  purchaseRecords: PurchaseTaxRecord[];
+  salesTaxRecords: SalesTaxRecord[];
+  purchaseSummary: TaxSummary;
+  salesSummary: TaxSummary;
+  vatDifference: number; // salesVat - purchaseVat
+}
+
+export type DataByMonth = Record<string, MonthTaxData>;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   TrendingDown,
@@ -7,6 +7,7 @@ import {
   Calendar,
   PlusCircle,
   ArrowRight,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { db } from '../db/db';
 import {
@@ -20,17 +21,22 @@ import {
   toBuddhistYear,
 } from '../utils/thaiDate';
 import { NavSection } from '../components/Layout';
+import { useMonth } from '../context/MonthContext';
 
 interface DashboardPageProps {
   onNavigate: (section: NavSection) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
-
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<number | 'ALL'>(currentMonth);
+  const {
+    selectedMonth,
+    selectedMonthNumber,
+    selectedYear,
+    setSelectedYear,
+    setSelectedMonthNumber,
+    buddhistYear,
+    availableYears,
+  } = useMonth();
 
   // Reactive queries via Dexie useLiveQuery
   const purchaseRecords = useLiveQuery(
@@ -48,16 +54,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
     [selectedYear]
   );
 
-  // Filter records based on selected month
+  // Filter records strictly based on global selected month
   const filteredPurchases =
-    purchaseRecords?.filter((r) =>
-      selectedMonth === 'ALL' ? true : r.taxMonth === selectedMonth
-    ) || [];
+    purchaseRecords?.filter((r) => r.taxMonth === selectedMonthNumber) || [];
 
   const filteredSales =
-    salesRecords?.filter((r) =>
-      selectedMonth === 'ALL' ? true : r.taxMonth === selectedMonth
-    ) || [];
+    salesRecords?.filter((r) => r.taxMonth === selectedMonthNumber) || [];
 
   const purchaseSummary = calculateSummary(filteredPurchases);
   const salesSummary = calculateSummary(filteredSales);
@@ -71,28 +73,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const inputVat = purchaseTotal * 0.07;
   const taxPayable = outputVat - inputVat;
 
-  // Available years list (e.g. 2024 to 2030)
-  const availableYears = [
-    currentYear - 2,
-    currentYear - 1,
-    currentYear,
-    currentYear + 1,
-    currentYear + 2,
-  ];
-
   return (
     <div className="space-y-6">
-      {/* Top Header & Filter Bar */}
+      {/* Top Header & Context Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
         <div>
           <h2 className="text-xl font-bold text-slate-900">แดชบอร์ดสรุปภาษี</h2>
           <p className="text-xs text-slate-500 mt-1">
-            ภาพรวมภาษีซื้อและภาษีขาย คำนวณจากฐานข้อมูล IndexedDB ในเครื่อง
+            ภาพรวมภาษีซื้อและภาษีขาย คำนวณจากฐานข้อมูลในเครื่อง ประจำเดือน{selectedMonth} พ.ศ. {buddhistYear}
           </p>
         </div>
 
-        {/* Year and Month Selectors */}
+        {/* Global Context Indicator & Year Selector */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-semibold">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+            <span>เดือน: {selectedMonth}</span>
+          </div>
+
           <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-sm">
             <Calendar className="w-4 h-4 text-slate-500" />
             <span className="text-xs font-medium text-slate-600">ปีภาษี:</span>
@@ -105,25 +103,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
               {availableYears.map((y) => (
                 <option key={y} value={y}>
                   พ.ศ. {toBuddhistYear(y)} ({y})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-sm">
-            <span className="text-xs font-medium text-slate-600">เดือน:</span>
-            <select
-              id="month-select"
-              value={selectedMonth}
-              onChange={(e) =>
-                setSelectedMonth(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))
-              }
-              className="bg-transparent font-semibold text-slate-800 focus:outline-hidden cursor-pointer"
-            >
-              <option value="ALL">ทั้งปี (12 เดือน)</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  {getThaiMonthName(m)}
                 </option>
               ))}
             </select>
@@ -349,16 +328,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {yearlyOverview?.map((item) => {
-                const isSelected = selectedMonth === item.month;
+                const isSelected = selectedMonthNumber === item.month;
                 return (
                   <tr
                     key={item.month}
-                    className={`hover:bg-slate-50 transition ${
-                      isSelected ? 'bg-teal-50/50 font-medium' : ''
+                    onClick={() => setSelectedMonthNumber(item.month)}
+                    className={`hover:bg-slate-50 transition cursor-pointer ${
+                      isSelected ? 'bg-emerald-50/70 font-semibold ring-1 ring-inset ring-emerald-300' : ''
                     }`}
+                    title={`คลิกเพื่อเลือกเดือน ${getThaiMonthName(item.month)}`}
                   >
-                    <td className="px-4 py-2.5 font-medium text-slate-900">
-                      {getThaiMonthName(item.month)} ({getThaiMonthShortName(item.month)})
+                    <td className="px-4 py-2.5 font-medium text-slate-900 flex items-center gap-1.5">
+                      {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block" />}
+                      <span>{getThaiMonthName(item.month)} ({getThaiMonthShortName(item.month)})</span>
                     </td>
                     <td className="px-4 py-2.5 text-right text-slate-700">
                       {formatCurrency(item.purchaseTaxable)}

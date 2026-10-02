@@ -5,6 +5,7 @@ import {
   Customer,
   PurchaseTaxRecord,
   SalesTaxRecord,
+  InvoiceNumberConfig,
 } from '../types';
 
 export class TaxRecordDatabase extends Dexie {
@@ -13,6 +14,7 @@ export class TaxRecordDatabase extends Dexie {
   customers!: Table<Customer, string>;
   purchaseTaxRecords!: Table<PurchaseTaxRecord, string>;
   salesTaxRecords!: Table<SalesTaxRecord, string>;
+  invoiceNumberConfigs!: Table<InvoiceNumberConfig, string>;
 
   constructor() {
     super('TaxRecordDB');
@@ -26,6 +28,11 @@ export class TaxRecordDatabase extends Dexie {
         'id, taxDate, taxYear, taxMonth, invoiceNumber, supplierId, [taxYear+taxMonth]',
       salesTaxRecords:
         'id, taxDate, taxYear, taxMonth, invoiceNumber, customerId, [taxYear+taxMonth]',
+    });
+
+    // Schema Version 2: Monthly Auto-Numbering Invoice Configuration
+    this.version(2).stores({
+      invoiceNumberConfigs: 'id, type, year, month, [type+year+month]',
     });
   }
 }
@@ -55,6 +62,7 @@ export async function resetDatabase(): Promise<void> {
       db.customers,
       db.purchaseTaxRecords,
       db.salesTaxRecords,
+      db.invoiceNumberConfigs,
     ],
     async () => {
       await db.businessSettings.clear();
@@ -62,6 +70,7 @@ export async function resetDatabase(): Promise<void> {
       await db.customers.clear();
       await db.purchaseTaxRecords.clear();
       await db.salesTaxRecords.clear();
+      await db.invoiceNumberConfigs.clear();
     }
   );
 }

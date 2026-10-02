@@ -14,6 +14,7 @@ export async function exportDatabaseToJson(): Promise<BackupData> {
   const customers = await db.customers.toArray();
   const purchaseTaxRecords = await db.purchaseTaxRecords.toArray();
   const salesTaxRecords = await db.salesTaxRecords.toArray();
+  const invoiceNumberConfigs = await db.invoiceNumberConfigs.toArray();
 
   const backup: BackupData = {
     backupFormatVersion: CURRENT_BACKUP_FORMAT_VERSION,
@@ -25,6 +26,7 @@ export async function exportDatabaseToJson(): Promise<BackupData> {
     customers,
     purchaseTaxRecords,
     salesTaxRecords,
+    invoiceNumberConfigs,
   };
 
   return backup;
@@ -150,6 +152,7 @@ export async function restoreReplaceAll(
       db.customers,
       db.purchaseTaxRecords,
       db.salesTaxRecords,
+      db.invoiceNumberConfigs,
     ],
     async () => {
       // Clear tables
@@ -158,6 +161,7 @@ export async function restoreReplaceAll(
       await db.customers.clear();
       await db.purchaseTaxRecords.clear();
       await db.salesTaxRecords.clear();
+      await db.invoiceNumberConfigs.clear();
 
       // Bulk add
       if (backupData.businessSettings && backupData.businessSettings.length > 0) {
@@ -174,6 +178,9 @@ export async function restoreReplaceAll(
       }
       if (backupData.salesTaxRecords.length > 0) {
         await db.salesTaxRecords.bulkAdd(backupData.salesTaxRecords);
+      }
+      if (backupData.invoiceNumberConfigs && backupData.invoiceNumberConfigs.length > 0) {
+        await db.invoiceNumberConfigs.bulkAdd(backupData.invoiceNumberConfigs);
       }
     }
   );
@@ -244,6 +251,16 @@ export async function restoreMerge(backupData: BackupData): Promise<{
         if (!exists) {
           await db.salesTaxRecords.add(s);
           addedSales++;
+        }
+      }
+
+      // Merge invoiceNumberConfigs
+      if (backupData.invoiceNumberConfigs) {
+        for (const cfg of backupData.invoiceNumberConfigs) {
+          const exists = await db.invoiceNumberConfigs.get(cfg.id);
+          if (!exists) {
+            await db.invoiceNumberConfigs.add(cfg);
+          }
         }
       }
     }

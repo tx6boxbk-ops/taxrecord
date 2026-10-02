@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { MonthProvider } from './context/MonthContext';
 import { Layout, NavSection } from './components/Layout';
 import { DashboardPage } from './pages/DashboardPage';
 import { PurchaseTaxPage } from './pages/PurchaseTaxPage';
@@ -36,31 +37,36 @@ export default function App() {
   }, []);
 
   return (
-    <Layout currentSection={currentSection} onSelectSection={setCurrentSection}>
-      {currentSection === 'dashboard' && (
-        <DashboardPage onNavigate={setCurrentSection} />
-      )}
-      {currentSection === 'purchase' && (
-        <PurchaseTaxPage onShowToast={showToast} />
-      )}
-      {currentSection === 'sales' && (
-        <SalesTaxPage onShowToast={showToast} />
-      )}
-      {currentSection === 'suppliers' && (
-        <SuppliersPage onShowToast={showToast} />
-      )}
-      {currentSection === 'customers' && (
-        <CustomersPage onShowToast={showToast} />
-      )}
-      {currentSection === 'reports' && (
-        <ReportsPage onShowToast={showToast} />
-      )}
-      {(currentSection === 'settings' || currentSection === 'backup') && (
-        <SettingsPage onShowToast={showToast} />
-      )}
-      {currentSection === 'system-test' && <SystemTestPage />}
+    <MonthProvider>
+      <Layout currentSection={currentSection} onSelectSection={setCurrentSection}>
+        {currentSection === 'dashboard' && (
+          <DashboardPage onNavigate={setCurrentSection} />
+        )}
+        {currentSection === 'purchase' && (
+          <PurchaseTaxPage onShowToast={showToast} />
+        )}
+        {currentSection === 'sales' && (
+          <SalesTaxPage onShowToast={showToast} />
+        )}
+        {currentSection === 'suppliers' && (
+          <SuppliersPage onShowToast={showToast} />
+        )}
+        {currentSection === 'customers' && (
+          <CustomersPage onShowToast={showToast} />
+        )}
+        {currentSection === 'reports' && (
+          <ReportsPage onShowToast={showToast} />
+        )}
+        {(currentSection === 'settings' || currentSection === 'backup') && (
+          <SettingsPage
+            onShowToast={showToast}
+            initialTab={currentSection === 'backup' ? 'backup' : 'profile'}
+          />
+        )}
+        {currentSection === 'system-test' && <SystemTestPage />}
 
-      <NotificationToast toasts={toasts} onDismiss={dismissToast} />
-    </Layout>
+        <NotificationToast toasts={toasts} onDismiss={dismissToast} />
+      </Layout>
+    </MonthProvider>
   );
 }

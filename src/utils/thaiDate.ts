@@ -114,3 +114,29 @@ export function getTodayDateString(): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Returns 1-based month index (1 to 12) from full Thai month name (e.g. "มกราคม" -> 1)
+ */
+export function getMonthNumberFromName(monthName: string): number {
+  const idx = THAI_MONTHS_FULL.indexOf(monthName.trim());
+  return idx !== -1 ? idx + 1 : 1;
+}
+
+/**
+ * Returns the number of days in a given Gregorian month and year (handles leap years)
+ */
+export function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+/**
+ * Constructs an ISO YYYY-MM-DD string from year, month (1-12), and day (1-31)
+ */
+export function constructIsoDate(year: number, month: number, day: number | string): string {
+  const d = typeof day === 'string' ? parseInt(day, 10) : day;
+  const safeDay = isNaN(d) || d < 1 ? 1 : d;
+  const maxDays = getDaysInMonth(year, month);
+  const clampedDay = Math.min(safeDay, maxDays);
+  return `${year}-${String(month).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`;
+}

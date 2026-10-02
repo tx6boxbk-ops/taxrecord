@@ -11,6 +11,8 @@ import {
   Building2,
   Calculator,
   UserPlus,
+  FileSpreadsheet,
+  Hash,
 } from 'lucide-react';
 import { db } from '../db/db';
 import {
@@ -20,6 +22,11 @@ import {
   calculateSummary,
 } from '../services/taxService';
 import { createSupplier } from '../services/supplierService';
+import {
+  getNextInvoiceNumber,
+  recordUsedInvoiceNumber,
+  checkInvoiceNumberDuplicate,
+} from '../services/invoiceNumberService';
 import { PurchaseTaxRecord, Supplier } from '../types';
 import {
   calculateVatExclusive,
@@ -35,17 +42,23 @@ import {
   toBuddhistYear,
 } from '../utils/thaiDate';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { InvoiceNumberConfigModal } from '../components/InvoiceNumberConfigModal';
+import { useMonth } from '../context/MonthContext';
 
 interface PurchaseTaxPageProps {
   onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast }) => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
+  const {
+    selectedMonth,
+    selectedMonthNumber,
+    selectedYear,
+    buddhistYear,
+    daysInSelectedMonth,
+    constructDateForSelectedMonth,
+  } = useMonth();
 
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<number | 'ALL'>(currentMonth);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -53,6 +66,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<PurchaseTaxRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PurchaseTaxRecord | null>(null);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // Quick Add Supplier Modal State
   const [isQuickSupplierOpen, setIsQuickSupplierOpen] = useState(false);
@@ -62,7 +76,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
   const [quickSupplierHead, setQuickSupplierHead] = useState(true);
 
   // Form State
-  const [taxDate, setTaxDate] = useState(getTodayDateString());
+  const [invoiceDay, setInvoiceDay] = useState('');
   const [invoiceBookNumber, setInvoiceBookNumber] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [supplierId, setSupplierId] = useState('');
@@ -83,10 +97,10 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
   const allPurchases = useLiveQuery(() => db.purchaseTaxRecords.toArray()) || [];
   const suppliers = useLiveQuery(() => db.suppliers.orderBy('displayName').toArray()) || [];
 
-  // Filter records
+  // Filter records strictly by global selected month and year
   const filteredRecords = allPurchases.filter((r) => {
-    if (selectedYear !== undefined && r.taxYear !== selectedYear) return false;
-    if (selectedMonth !== 'ALL' && r.taxMonth !== selectedMonth) return false;
+    if (r.taxYear !== selectedYear) return false;
+    if (r.taxMonth !== selectedMonthNumber) return false;
     if (selectedSupplierId !== 'ALL' && r.supplierId !== selectedSupplierId) return false;
 
     if (searchQuery.trim()) {
@@ -158,11 +172,10 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
     }
   };
 
-  const openAddModal = () => {
+  const openAddModal = async () => {
     setEditingRecord(null);
-    setTaxDate(getTodayDateString());
+    setInvoiceDay(Math.min(new Date().getDate(), daysInSelectedMonth).toString());
     setInvoiceBookNumber('');
-    setInvoiceNumber('');
     setSupplierId('');
     setSupplierName('');
     setSupplierTaxId('');
@@ -176,12 +189,21 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
     setCalcMode('EXCLUSIVE');
     setNote('');
     setFormError('');
+
+    try {
+      const autoNum = await getNextInvoiceNumber('PURCHASE', selectedYear, selectedMonthNumber);
+      setInvoiceNumber(autoNum);
+    } catch {
+      setInvoiceNumber('');
+    }
+
     setIsModalOpen(true);
   };
 
   const openEditModal = (record: PurchaseTaxRecord) => {
     setEditingRecord(record);
-    setTaxDate(record.taxDate);
+    const dayPart = record.taxDate ? record.taxDate.split('-')[2] : '1';
+    setInvoiceDay(dayPart ? parseInt(dayPart, 10).toString() : '1');
     setInvoiceBookNumber(record.invoiceBookNumber || '');
     setInvoiceNumber(record.invoiceNumber);
     setSupplierId(record.supplierId);
@@ -204,13 +226,31 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
     e.preventDefault();
     setFormError('');
 
-    if (!taxDate) {
-      setFormError('กรุณาระบุวันที่ใบกำกับภาษี');
+    const dayNum = parseInt(invoiceDay.trim(), 10);
+    if (!invoiceDay.trim() || isNaN(dayNum) || dayNum < 1 || dayNum > daysInSelectedMonth) {
+      setFormError(`กรุณาระบุวันที่ระหว่าง 1 ถึง ${daysInSelectedMonth} สำหรับเดือน${selectedMonth}`);
       return;
     }
 
-    if (!invoiceNumber.trim()) {
+    const fullTaxDate = constructDateForSelectedMonth(dayNum);
+    const cleanInvoiceNumber = invoiceNumber.trim();
+
+    if (!cleanInvoiceNumber) {
       setFormError('กรุณาระบุเลขที่ใบกำกับภาษี');
+      return;
+    }
+
+    // Check duplicate invoice number in this month + year
+    const isDuplicate = await checkInvoiceNumberDuplicate(
+      'PURCHASE',
+      selectedYear,
+      selectedMonthNumber,
+      cleanInvoiceNumber,
+      editingRecord?.id
+    );
+
+    if (isDuplicate) {
+      setFormError('เลขที่ใบกำกับภาษีนี้ถูกใช้งานแล้ว กรุณาระบุเลขใหม่');
       return;
     }
 
@@ -232,9 +272,9 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
     try {
       if (editingRecord) {
         await updatePurchaseTaxRecord(editingRecord.id, {
-          taxDate,
+          taxDate: fullTaxDate,
           invoiceBookNumber: invoiceBookNumber.trim(),
-          invoiceNumber: invoiceNumber.trim(),
+          invoiceNumber: cleanInvoiceNumber,
           supplierId: supplierId || 'CUSTOM',
           supplierNameSnapshot: supplierName.trim(),
           supplierTaxpayerIdSnapshot: supplierTaxId.trim(),
@@ -246,12 +286,13 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
           customTotalAmount: total,
           note: note.trim(),
         });
+        await recordUsedInvoiceNumber('PURCHASE', selectedYear, selectedMonthNumber, cleanInvoiceNumber);
         onShowToast('แก้ไขรายการภาษีซื้อเรียบร้อยแล้ว', 'success');
       } else {
         await createPurchaseTaxRecord({
-          taxDate,
+          taxDate: fullTaxDate,
           invoiceBookNumber: invoiceBookNumber.trim(),
-          invoiceNumber: invoiceNumber.trim(),
+          invoiceNumber: cleanInvoiceNumber,
           supplierId: supplierId || 'CUSTOM',
           supplierNameSnapshot: supplierName.trim(),
           supplierTaxpayerIdSnapshot: supplierTaxId.trim(),
@@ -263,6 +304,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
           customTotalAmount: total,
           note: note.trim(),
         });
+        await recordUsedInvoiceNumber('PURCHASE', selectedYear, selectedMonthNumber, cleanInvoiceNumber);
         onShowToast('บันทึกรายการภาษีซื้อเรียบร้อยแล้ว', 'success');
       }
       setIsModalOpen(false);
@@ -310,14 +352,6 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
     }
   };
 
-  const availableYears = [
-    currentYear - 2,
-    currentYear - 1,
-    currentYear,
-    currentYear + 1,
-    currentYear + 2,
-  ];
-
   return (
     <div className="space-y-5">
       {/* Header Bar */}
@@ -332,52 +366,37 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
           </p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-xs transition cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ เพิ่มรายการภาษีซื้อ</span>
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsConfigModalOpen(true)}
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 transition cursor-pointer"
+            title="ตั้งค่าเลขที่ใบกำกับภาษีเริ่มต้นแยกตามเดือนและปี"
+          >
+            <Hash className="w-4 h-4 text-teal-700" />
+            <span>ตั้งค่าเลขใบกำกับภาษี</span>
+          </button>
+
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-xs transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ เพิ่มรายการภาษีซื้อ</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Controls */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Year Filter */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs">
-            <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
-            <span className="font-medium text-slate-600">ปี:</span>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-transparent font-semibold text-slate-800 focus:outline-hidden w-full cursor-pointer"
-            >
-              {availableYears.map((y) => (
-                <option key={y} value={y}>
-                  พ.ศ. {toBuddhistYear(y)} ({y})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Month Filter */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs">
-            <span className="font-medium text-slate-600">เดือน:</span>
-            <select
-              value={selectedMonth}
-              onChange={(e) =>
-                setSelectedMonth(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))
-              }
-              className="bg-transparent font-semibold text-slate-800 focus:outline-hidden w-full cursor-pointer"
-            >
-              <option value="ALL">ทุกเดือนในรอบปี</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  {getThaiMonthName(m)}
-                </option>
-              ))}
-            </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Active Month & Year Display Badge */}
+          <div className="flex items-center gap-2 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200 text-xs">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span className="font-medium text-slate-600">รอบเดือนภาษี:</span>
+            <span className="font-bold text-emerald-800 font-mono">
+              {selectedMonth} พ.ศ. {buddhistYear}
+            </span>
           </div>
 
           {/* Supplier Filter */}
@@ -425,8 +444,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
         <div>
           <span className="font-medium text-teal-800">ช่วงเวลาที่แสดง: </span>
           <span className="font-bold">
-            {selectedMonth === 'ALL' ? 'ทั้งปี' : getThaiMonthName(selectedMonth)}{' '}
-            พ.ศ. {toBuddhistYear(selectedYear)}
+            เดือน{selectedMonth} พ.ศ. {buddhistYear}
           </span>
           <span className="mx-2 text-teal-300">|</span>
           <span>จำนวนรายการ: </span>
@@ -598,18 +616,26 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      วันที่ตามใบกำกับภาษี <span className="text-rose-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        วันที่ (1-{daysInSelectedMonth}) <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] text-teal-800 font-bold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                        {selectedMonth} {buddhistYear}
+                      </span>
+                    </div>
                     <input
-                      type="date"
+                      type="number"
+                      min={1}
+                      max={daysInSelectedMonth}
                       required
-                      value={taxDate}
-                      onChange={(e) => setTaxDate(e.target.value)}
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-teal-600"
+                      placeholder="เช่น 15"
+                      value={invoiceDay}
+                      onChange={(e) => setInvoiceDay(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono text-center font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
                     />
-                    <span className="text-[11px] text-slate-500 mt-0.5 block">
-                      {formatThaiDateShort(taxDate)}
+                    <span className="text-[11px] text-slate-500 mt-0.5 block text-center">
+                      {invoiceDay ? `${invoiceDay} ${selectedMonth} พ.ศ. ${buddhistYear}` : `กรอกเฉพาะวันที่ (1-${daysInSelectedMonth})`}
                     </span>
                   </div>
 
@@ -627,17 +653,31 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      เลขที่ใบกำกับภาษี <span className="text-rose-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        เลขที่ใบกำกับภาษี <span className="text-rose-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsConfigModalOpen(true)}
+                        className="text-[11px] text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                        title="ตั้งค่าเลขเริ่มต้นของเดือนนี้"
+                      >
+                        <Hash className="w-3 h-3" />
+                        <span>ตั้งค่าเลขเริ่มต้น</span>
+                      </button>
+                    </div>
                     <input
                       type="text"
                       required
-                      placeholder="เช่น IV-2026-001"
+                      placeholder="เช่น IV-2026-001 หรือ BILL001"
                       value={invoiceNumber}
                       onChange={(e) => setInvoiceNumber(e.target.value)}
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-hidden focus:ring-2 focus:ring-teal-600"
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-teal-600 bg-white"
                     />
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      * สร้างให้อัตโนมัติตามเดือน {selectedMonth} (สามารถแก้ไขเลขเองได้)
+                    </span>
                   </div>
                 </div>
               </div>
@@ -978,6 +1018,27 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
         isDestructive={true}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Invoice Number Config Modal */}
+      <InvoiceNumberConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        type="PURCHASE"
+        onSaved={async (saved) => {
+          onShowToast(
+            `ตั้งค่าเลขเริ่มต้น ${saved.startNumber} ประจำเดือนสำเร็จ`,
+            'success'
+          );
+          if (
+            isModalOpen &&
+            !editingRecord &&
+            saved.year === selectedYear &&
+            saved.month === selectedMonthNumber
+          ) {
+            setInvoiceNumber(saved.startNumber);
+          }
+        }}
       />
     </div>
   );

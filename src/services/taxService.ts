@@ -3,9 +3,11 @@ import {
   PurchaseTaxRecord,
   SalesTaxRecord,
   TaxSummary,
+  DataByMonth,
+  MonthTaxData,
 } from '../types';
 import { calculateVatExclusive, roundToTwoDecimals } from '../utils/calculation';
-import { parseTaxPeriod } from '../utils/thaiDate';
+import { parseTaxPeriod, getThaiMonthName, toBuddhistYear } from '../utils/thaiDate';
 
 // ==================== PURCHASE TAX SERVICE ====================
 
@@ -376,4 +378,39 @@ export async function getYearlyTaxOverview(year: number): Promise<MonthlyOvervie
   }
 
   return result;
+}
+
+/**
+ * Returns month-isolated data partitioned by Thai month names
+ * e.g. dataByMonth["มกราคม"], dataByMonth["กุมภาพันธ์"], etc.
+ */
+export async function getDataByMonth(year: number): Promise<DataByMonth> {
+  const purchases = await db.purchaseTaxRecords.where('taxYear').equals(year).toArray();
+  const sales = await db.salesTaxRecords.where('taxYear').equals(year).toArray();
+
+  const dataByMonth: DataByMonth = {};
+
+  for (let m = 1; m <= 12; m++) {
+    const monthName = getThaiMonthName(m);
+    const monthPurchases = purchases.filter((p) => p.taxMonth === m);
+    const monthSales = sales.filter((s) => s.taxMonth === m);
+
+    const purchaseSummary = calculateSummary(monthPurchases);
+    const salesSummary = calculateSummary(monthSales);
+    const vatDifference = roundToTwoDecimals(salesSummary.vatAmount - purchaseSummary.vatAmount);
+
+    dataByMonth[monthName] = {
+      monthName,
+      monthNumber: m,
+      year,
+      buddhistYear: toBuddhistYear(year),
+      purchaseRecords: monthPurchases,
+      salesTaxRecords: monthSales,
+      purchaseSummary,
+      salesSummary,
+      vatDifference,
+    };
+  }
+
+  return dataByMonth;
 }

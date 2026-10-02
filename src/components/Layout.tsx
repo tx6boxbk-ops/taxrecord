@@ -16,6 +16,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
+import { MonthTabBar } from './MonthTabBar';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export type NavSection =
@@ -261,8 +262,11 @@ export const Layout: React.FC<LayoutProps> = ({
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-12">{children}</main>
       </div>
+
+      {/* Excel Sheet Month Tab Bar */}
+      <MonthTabBar />
     </div>
   );
 };

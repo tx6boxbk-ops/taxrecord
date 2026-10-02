@@ -2,6 +2,7 @@ import { BusinessSettings } from './businessSettings';
 import { Supplier } from './supplier';
 import { Customer } from './customer';
 import { PurchaseTaxRecord, SalesTaxRecord } from './tax';
+import { InvoiceNumberConfig } from './invoiceConfig';
 
 export interface BackupData {
   backupFormatVersion: string; // e.g. '1.0'
@@ -13,6 +14,7 @@ export interface BackupData {
   customers: Customer[];
   purchaseTaxRecords: PurchaseTaxRecord[];
   salesTaxRecords: SalesTaxRecord[];
+  invoiceNumberConfigs?: InvoiceNumberConfig[];
 }
 
 export interface BackupPreview {

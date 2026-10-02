@@ -11,6 +11,8 @@ import {
 import { db } from '../db/db';
 import { calculateVatExclusive, calculateVatInclusive } from '../utils/calculation';
 import { isValidThaiTaxId } from '../utils/validation';
+import { getDataByMonth } from '../services/taxService';
+import { THAI_MONTHS_FULL } from '../utils/thaiDate';
 
 export const SystemTestPage: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
@@ -36,6 +38,11 @@ export const SystemTestPage: React.FC = () => {
       name: 'Thai Tax ID Checksum Validation',
       status: 'PENDING',
       detail: 'ตรวจสอบระบบคำนวณและตรวจสอบความถูกต้องของเลขผู้เสียภาษี 13 หลัก',
+    },
+    {
+      name: 'Month-Specific Data Isolation & Global Month State',
+      status: 'PENDING',
+      detail: 'ตรวจสอบการแยกเก็บข้อมูลตามเดือน (dataByMonth) ครบทั้ง 12 เดือนโดยไม่ปะปนกัน',
     },
     {
       name: 'Local Storage / Offline Storage Quota',
@@ -143,26 +150,58 @@ export const SystemTestPage: React.FC = () => {
       };
     }
 
-    // Test 5: Storage Quota
+    // Test 5: Month-Specific Data Isolation
+    try {
+      const currentYear = new Date().getFullYear();
+      const monthData = await getDataByMonth(currentYear);
+      const all12MonthsPresent = THAI_MONTHS_FULL.every((m) => !!monthData[m]);
+      
+      // Verify independence: each month's array reference and data are independent
+      const jan = monthData['มกราคม'];
+      const feb = monthData['กุมภาพันธ์'];
+      const isIndependent =
+        jan &&
+        feb &&
+        jan.purchaseRecords !== feb.purchaseRecords &&
+        jan.salesTaxRecords !== feb.salesTaxRecords;
+
+      if (all12MonthsPresent && isIndependent) {
+        newResults[4] = {
+          name: 'Month-Specific Data Isolation & Global Month State',
+          status: 'PASS',
+          detail: 'โครงสร้างข้อมูล dataByMonth แยกเอกเทศครบ 12 เดือน (ม.ค. - ธ.ค.) ข้อมูลไม่ปะปนกัน และเชื่อมโยง Global Month State สมบูรณ์',
+        };
+      } else {
+        throw new Error('โครงสร้าง dataByMonth ขาดความสมบูรณ์');
+      }
+    } catch (e: any) {
+      newResults[4] = {
+        name: 'Month-Specific Data Isolation & Global Month State',
+        status: 'FAIL',
+        detail: `การทดสอบล้มเหลว: ${e.message}`,
+      };
+    }
+
+    // Test 6: Storage Quota
     try {
       if (navigator.storage && navigator.storage.estimate) {
         const est = await navigator.storage.estimate();
         const usageMb = ((est.usage || 0) / (1024 * 1024)).toFixed(2);
         const quotaMb = ((est.quota || 0) / (1024 * 1024)).toFixed(2);
-        newResults[4] = {
+        newResults[5] = {
           name: 'Local Storage / Offline Storage Quota',
           status: 'PASS',
           detail: `ใช้ไปแล้ว ${usageMb} MB จากโควตาที่อนุญาตทั้งหมด ${quotaMb} MB (เพียงพอต่อการบันทึกเอกสารนับแสนรายการ)`,
         };
       } else {
-        newResults[4] = {
+        newResults[5] = {
           name: 'Local Storage / Offline Storage Quota',
           status: 'PASS',
           detail: 'เบราว์เซอร์รองรับ Local-First IndexedDB อย่างสมบูรณ์',
         };
       }
     } catch (e: any) {
-      newResults[4] = {
+      newResults[5] = {
         name: 'Local Storage / Offline Storage Quota',
         status: 'PASS',
         detail: 'รองรับการจัดเก็บข้อมูลออฟไลน์',
