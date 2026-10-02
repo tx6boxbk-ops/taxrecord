@@ -65,6 +65,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
   const [quickCustomerAddress, setQuickCustomerAddress] = useState('');
   const [quickCustomerPhone, setQuickCustomerPhone] = useState('');
   const [quickCustomerNote, setQuickCustomerNote] = useState('');
+  const [quickCustomerVatRate, setQuickCustomerVatRate] = useState('7');
   const [quickCustomerError, setQuickCustomerError] = useState('');
 
   // Form State
@@ -159,6 +160,22 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
       setCustomerTaxId(selected.taxpayerId);
       setCustomerBranchType(selected.headOffice ? 'HEAD' : 'BRANCH');
       setCustomerBranchNumber(selected.branchNumber || '00000');
+
+      // Auto-apply customer's default VAT rate
+      const customerRate = selected.defaultVatRate !== undefined ? selected.defaultVatRate : 7;
+      setVatRateStr(customerRate.toString());
+
+      if (calcMode === 'EXCLUSIVE') {
+        const taxable = parseAmount(taxableAmountStr);
+        const calc = calculateVatExclusive(taxable, customerRate);
+        setVatAmountStr(calc.vatAmount.toFixed(2));
+        setTotalAmountStr(calc.totalAmount.toFixed(2));
+      } else {
+        const total = parseAmount(totalAmountStr);
+        const calc = calculateVatInclusive(total, customerRate);
+        setTaxableAmountStr(calc.taxableAmount.toFixed(2));
+        setVatAmountStr(calc.vatAmount.toFixed(2));
+      }
     }
   };
 
@@ -285,6 +302,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
     setQuickCustomerAddress('');
     setQuickCustomerPhone('');
     setQuickCustomerNote('');
+    setQuickCustomerVatRate('7');
     setQuickCustomerError('');
     setIsQuickCustomerOpen(true);
   };
@@ -319,6 +337,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
     }
 
     try {
+      const parsedRate = parseAmount(quickCustomerVatRate);
       const newCust = await createCustomer({
         displayName: cleanDisplay,
         legalName: quickCustomerLegalName.trim() || cleanDisplay,
@@ -328,6 +347,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
         address: quickCustomerAddress.trim(),
         phone: quickCustomerPhone.trim(),
         note: quickCustomerNote.trim(),
+        defaultVatRate: isNaN(parsedRate) ? 7 : parsedRate,
       });
 
       handleCustomerSelect(newCust.id);
@@ -638,7 +658,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                 <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
                   1. ข้อมูลใบกำกับภาษี
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       วันที่ตามใบกำกับภาษี <span className="text-rose-500">*</span>
@@ -653,19 +673,6 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                     <span className="text-[11px] text-slate-500 mt-0.5 block">
                       {formatThaiDateShort(taxDate)}
                     </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      เล่มที่ (Book No.)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="เช่น 001"
-                      value={invoiceBookNumber}
-                      onChange={(e) => setInvoiceBookNumber(e.target.value)}
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
-                    />
                   </div>
 
                   <div>
@@ -823,7 +830,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       มูลค่าสินค้า/บริการ <span className="text-rose-500">*</span>
@@ -839,22 +846,14 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      อัตรา VAT (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={vatRateStr}
-                      onChange={(e) => handleVatRateChange(e.target.value)}
-                      className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-center focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      ภาษีมูลค่าเพิ่ม (VAT)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        ภาษีมูลค่าเพิ่ม (VAT)
+                      </label>
+                      <span className="text-[10px] text-indigo-700 font-medium bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                        อัตรา {vatRateStr}%
+                      </span>
+                    </div>
                     <input
                       type="number"
                       step="0.01"
@@ -877,20 +876,6 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                     />
                   </div>
                 </div>
-              </div>
-
-              {/* Section 4: Note */}
-              <div className="pt-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  หมายเหตุ (Note)
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น ค่าบริการรายเดือน, ค่าสินค้าตามสัญญา"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
-                />
               </div>
 
               <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
@@ -1080,6 +1065,51 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                   onChange={(e) => setQuickCustomerNote(e.target.value)}
                   className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  อัตรา VAT ประจำตัวผู้ซื้อ (%) <span className="text-slate-400 font-normal">(ค่าตั้งต้นใช้คำนวณภาษีขาย)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setQuickCustomerVatRate('7')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border cursor-pointer transition ${
+                        quickCustomerVatRate === '7'
+                          ? 'bg-indigo-700 text-white border-indigo-700'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      7% (ทั่วไป)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickCustomerVatRate('0')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border cursor-pointer transition ${
+                        quickCustomerVatRate === '0'
+                          ? 'bg-indigo-700 text-white border-indigo-700'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      0% (ยกเว้น/ส่งออก)
+                    </button>
+                  </div>
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={quickCustomerVatRate}
+                      onChange={(e) => setQuickCustomerVatRate(e.target.value)}
+                      placeholder="เช่น 7"
+                      className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-center focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
+                    />
+                    <span className="absolute right-3 top-1.5 text-xs text-slate-400 font-mono">%</span>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">

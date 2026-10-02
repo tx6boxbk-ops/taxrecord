@@ -39,6 +39,7 @@ export async function createCustomer(
     legalName: data.legalName.trim() || data.displayName.trim(),
     taxpayerId: String(data.taxpayerId || '').trim(),
     branchNumber: String(data.branchNumber || '00000').trim(),
+    defaultVatRate: data.defaultVatRate !== undefined ? Number(data.defaultVatRate) : 7,
     createdAt: now,
     updatedAt: now,
   };
@@ -65,6 +66,7 @@ export async function updateCustomer(
   if (data.legalName !== undefined) updated.legalName = data.legalName.trim();
   if (data.taxpayerId !== undefined) updated.taxpayerId = String(data.taxpayerId).trim();
   if (data.branchNumber !== undefined) updated.branchNumber = String(data.branchNumber).trim();
+  if (data.defaultVatRate !== undefined) updated.defaultVatRate = Number(data.defaultVatRate);
 
   await db.customers.update(id, updated);
 }
