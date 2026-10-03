@@ -8,6 +8,7 @@ export interface Supplier {
   address: string;
   phone: string;
   note: string;
+  defaultVatRate?: number; // อัตราภาษีมูลค่าเพิ่มตั้งต้น (%) ค่าปกติ 7
   createdAt: string;
   updatedAt: string;
 }

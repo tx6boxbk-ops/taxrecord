@@ -85,10 +85,10 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
   const [supplierBranchType, setSupplierBranchType] = useState<'HEAD' | 'BRANCH'>('HEAD');
   const [supplierBranchNumber, setSupplierBranchNumber] = useState('00000');
 
-  const [taxableAmountStr, setTaxableAmountStr] = useState('1000.00');
+  const [taxableAmountStr, setTaxableAmountStr] = useState('');
   const [vatRateStr, setVatRateStr] = useState('7');
-  const [vatAmountStr, setVatAmountStr] = useState('70.00');
-  const [totalAmountStr, setTotalAmountStr] = useState('1070.00');
+  const [vatAmountStr, setVatAmountStr] = useState('');
+  const [totalAmountStr, setTotalAmountStr] = useState('');
   const [calcMode, setCalcMode] = useState<'EXCLUSIVE' | 'INCLUSIVE'>('EXCLUSIVE');
   const [note, setNote] = useState('');
   const [formError, setFormError] = useState('');
@@ -129,6 +129,11 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
   // Auto-calculation handlers
   const handleTaxableChange = (valStr: string) => {
     setTaxableAmountStr(valStr);
+    if (!valStr.trim()) {
+      setVatAmountStr('');
+      setTotalAmountStr('');
+      return;
+    }
     const taxable = parseAmount(valStr);
     const rate = parseAmount(vatRateStr);
     const calc = calculateVatExclusive(taxable, rate);
@@ -138,6 +143,11 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
 
   const handleTotalChange = (valStr: string) => {
     setTotalAmountStr(valStr);
+    if (!valStr.trim()) {
+      setTaxableAmountStr('');
+      setVatAmountStr('');
+      return;
+    }
     const total = parseAmount(valStr);
     const rate = parseAmount(vatRateStr);
     const calc = calculateVatInclusive(total, rate);
@@ -149,11 +159,21 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
     setVatRateStr(rateStr);
     const rate = parseAmount(rateStr);
     if (calcMode === 'EXCLUSIVE') {
+      if (!taxableAmountStr.trim()) {
+        setVatAmountStr('');
+        setTotalAmountStr('');
+        return;
+      }
       const taxable = parseAmount(taxableAmountStr);
       const calc = calculateVatExclusive(taxable, rate);
       setVatAmountStr(calc.vatAmount.toFixed(2));
       setTotalAmountStr(calc.totalAmount.toFixed(2));
     } else {
+      if (!totalAmountStr.trim()) {
+        setTaxableAmountStr('');
+        setVatAmountStr('');
+        return;
+      }
       const total = parseAmount(totalAmountStr);
       const calc = calculateVatInclusive(total, rate);
       setTaxableAmountStr(calc.taxableAmount.toFixed(2));
@@ -169,6 +189,17 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
       setSupplierTaxId(selected.taxpayerId);
       setSupplierBranchType(selected.headOffice ? 'HEAD' : 'BRANCH');
       setSupplierBranchNumber(selected.branchNumber || '00000');
+
+      // Auto-apply supplier's default VAT rate
+      const supplierRate = selected.defaultVatRate !== undefined ? selected.defaultVatRate : 7;
+      setVatRateStr(supplierRate.toString());
+
+      if (taxableAmountStr.trim()) {
+        const taxable = parseAmount(taxableAmountStr);
+        const calc = calculateVatExclusive(taxable, supplierRate);
+        setVatAmountStr(calc.vatAmount.toFixed(2));
+        setTotalAmountStr(calc.totalAmount.toFixed(2));
+      }
     }
   };
 
@@ -182,10 +213,10 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
     setSupplierBranchType('HEAD');
     setSupplierBranchNumber('00000');
 
-    setTaxableAmountStr('1000.00');
+    setTaxableAmountStr('');
     setVatRateStr('7');
-    setVatAmountStr('70.00');
-    setTotalAmountStr('1070.00');
+    setVatAmountStr('');
+    setTotalAmountStr('');
     setCalcMode('EXCLUSIVE');
     setNote('');
     setFormError('');
@@ -261,7 +292,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
 
     const taxable = parseAmount(taxableAmountStr);
     const vat = parseAmount(vatAmountStr);
-    const total = parseAmount(totalAmountStr);
+    const total = totalAmountStr.trim() ? parseAmount(totalAmountStr) : roundToTwoDecimals(taxable + vat);
     const vatRate = parseAmount(vatRateStr);
 
     if (taxable < 0) {
@@ -614,7 +645,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                 <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
                   1. ข้อมูลใบกำกับภาษี
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-slate-700">
@@ -637,19 +668,6 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                     <span className="text-[11px] text-slate-500 mt-0.5 block text-center">
                       {invoiceDay ? `${invoiceDay} ${selectedMonth} พ.ศ. ${buddhistYear}` : `กรอกเฉพาะวันที่ (1-${daysInSelectedMonth})`}
                     </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      เล่มที่ (Book No.)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="เช่น 001"
-                      value={invoiceBookNumber}
-                      onChange={(e) => setInvoiceBookNumber(e.target.value)}
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-hidden focus:ring-2 focus:ring-teal-600"
-                    />
                   </div>
 
                   <div>
@@ -717,7 +735,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                       <option value="">-- เลือกผู้ขาย หรือ กรอกเองด้านล่าง --</option>
                       {suppliers.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {s.displayName} (เลขผู้เสียภาษี: {s.taxpayerId || '-'})
+                          {s.displayName} (เลขผู้เสียภาษี: {s.taxpayerId || '-'}) - VAT {s.defaultVatRate !== undefined ? s.defaultVatRate : 7}%
                         </option>
                       ))}
                     </select>
@@ -820,7 +838,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       มูลค่าสินค้า/บริการ <span className="text-rose-500">*</span>
@@ -829,6 +847,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                       type="number"
                       step="0.01"
                       required
+                      placeholder="0.00"
                       value={taxableAmountStr}
                       onChange={(e) => handleTaxableChange(e.target.value)}
                       className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-right focus:outline-hidden focus:ring-2 focus:ring-teal-600"
@@ -855,39 +874,22 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                     <input
                       type="number"
                       step="0.01"
+                      placeholder="0.00"
                       value={vatAmountStr}
-                      onChange={(e) => setVatAmountStr(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setVatAmountStr(val);
+                        if (val.trim() && taxableAmountStr.trim()) {
+                          const taxable = parseAmount(taxableAmountStr);
+                          const vat = parseAmount(val);
+                          const total = roundToTwoDecimals(taxable + Math.abs(vat));
+                          setTotalAmountStr(total.toFixed(2));
+                        }
+                      }}
                       className="w-full text-xs px-3 py-2 bg-teal-50 border border-teal-300 text-teal-900 rounded-lg font-mono text-right font-bold focus:outline-hidden focus:ring-2 focus:ring-teal-600"
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      รวมทั้งสิ้น (Total)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={totalAmountStr}
-                      onChange={(e) => handleTotalChange(e.target.value)}
-                      className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-right font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
-                    />
-                  </div>
                 </div>
-              </div>
-
-              {/* Section 4: Note */}
-              <div className="pt-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  หมายเหตุ (Note)
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น ค่าอุปกรณ์สำนักงาน, ค่าบริการอินเทอร์เน็ต"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-teal-600"
-                />
               </div>
 
               <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
