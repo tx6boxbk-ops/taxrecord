@@ -719,18 +719,53 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                         {selectedMonth} {buddhistYear}
                       </span>
                     </div>
-                    <input
-                      type="number"
-                      min={1}
-                      max={daysInSelectedMonth}
-                      required
-                      placeholder="เช่น 15"
-                      value={invoiceDay}
-                      onChange={(e) => setInvoiceDay(e.target.value)}
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono text-center font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
-                    />
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={1}
+                        max={daysInSelectedMonth}
+                        required
+                        placeholder="เช่น 15"
+                        value={invoiceDay}
+                        onChange={(e) => setInvoiceDay(e.target.value)}
+                        className="w-full text-xs pl-3 pr-9 py-2 border border-slate-300 rounded-lg font-mono text-center font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
+                      />
+                      <div className="absolute right-2 flex items-center justify-center">
+                        <div
+                          className="relative w-6 h-6 flex items-center justify-center rounded hover:bg-slate-100 transition text-slate-400 hover:text-indigo-700 cursor-pointer"
+                          title="เลือกวันที่จากปฏิทิน"
+                          onClick={(e) => {
+                            try {
+                              (e.currentTarget.querySelector('input[type="date"]') as HTMLInputElement)?.showPicker();
+                            } catch {}
+                          }}
+                        >
+                          <Calendar className="w-4 h-4 pointer-events-none" />
+                          <input
+                            type="date"
+                            tabIndex={-1}
+                            min={`${selectedYear}-${String(selectedMonthNumber).padStart(2, '0')}-01`}
+                            max={`${selectedYear}-${String(selectedMonthNumber).padStart(2, '0')}-${String(daysInSelectedMonth).padStart(2, '0')}`}
+                            value={
+                              invoiceDay && !isNaN(parseInt(invoiceDay, 10)) && parseInt(invoiceDay, 10) >= 1 && parseInt(invoiceDay, 10) <= daysInSelectedMonth
+                                ? `${selectedYear}-${String(selectedMonthNumber).padStart(2, '0')}-${String(parseInt(invoiceDay, 10)).padStart(2, '0')}`
+                                : ''
+                            }
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                const parts = e.target.value.split('-');
+                                if (parts[2]) {
+                                  setInvoiceDay(parseInt(parts[2], 10).toString());
+                                }
+                              }
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
                     <span className="text-[11px] text-slate-500 mt-0.5 block text-center">
-                      {invoiceDay ? `${invoiceDay} ${selectedMonth} พ.ศ. ${buddhistYear}` : `กรอกเฉพาะวันที่ (1-${daysInSelectedMonth})`}
+                      {invoiceDay ? `${invoiceDay} ${selectedMonth} พ.ศ. ${buddhistYear}` : `กรอกเฉพาะวันที่ (1-${daysInSelectedMonth}) หรือเลือกจากปฏิทิน`}
                     </span>
                   </div>
 
