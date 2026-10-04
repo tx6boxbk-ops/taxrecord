@@ -124,14 +124,14 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
     return true;
   });
 
-  // Sort by invoice number ascending (น้อย ไปหา มาก), then date
+  // Sort by date ascending (น้อย ไปหา มาก), then invoice number
   const sortedRecords = [...filteredRecords].sort((a, b) => {
-    const invComp = (a.invoiceNumber || '').localeCompare(b.invoiceNumber || '', undefined, {
+    const dateComp = (a.taxDate || '').localeCompare(b.taxDate || '');
+    if (dateComp !== 0) return dateComp;
+    return (a.invoiceNumber || '').localeCompare(b.invoiceNumber || '', undefined, {
       numeric: true,
       sensitivity: 'base',
     });
-    if (invComp !== 0) return invComp;
-    return (a.taxDate || '').localeCompare(b.taxDate || '');
   });
 
   const summary = calculateSummary(sortedRecords);
