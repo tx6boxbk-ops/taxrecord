@@ -117,14 +117,14 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
     return true;
   });
 
-  // Sort by invoice number ascending (น้อย ไปหา มาก), then date
+  // Sort by date ascending (น้อย ไปหา มาก), then invoice number
   const sortedRecords = [...filteredRecords].sort((a, b) => {
-    const invComp = (a.invoiceNumber || '').localeCompare(b.invoiceNumber || '', undefined, {
+    const dateComp = (a.taxDate || '').localeCompare(b.taxDate || '');
+    if (dateComp !== 0) return dateComp;
+    return (a.invoiceNumber || '').localeCompare(b.invoiceNumber || '', undefined, {
       numeric: true,
       sensitivity: 'base',
     });
-    if (invComp !== 0) return invComp;
-    return (a.taxDate || '').localeCompare(b.taxDate || '');
   });
 
   const summary = calculateSummary(sortedRecords);
@@ -395,16 +395,6 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setIsConfigModalOpen(true)}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 transition cursor-pointer"
-            title="ตั้งค่าเลขที่ใบกำกับภาษีเริ่มต้นแยกตามเดือนและปี"
-          >
-            <Hash className="w-4 h-4 text-teal-700" />
-            <span>ตั้งค่าเลขใบกำกับภาษี</span>
-          </button>
-
           <button
             onClick={openAddModal}
             className="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-xs transition cursor-pointer"
