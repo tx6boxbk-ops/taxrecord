@@ -835,7 +835,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                       <option value="">-- เลือกผู้ซื้อ หรือ กรอกเองด้านล่าง --</option>
                       {customers.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.displayName} {c.taxpayerId ? `(${c.taxpayerId})` : ''} - {c.headOffice ? 'สำนักงานใหญ่' : `สาขา ${c.branchNumber}`}
+                          {c.displayName}
                         </option>
                       ))}
                     </select>

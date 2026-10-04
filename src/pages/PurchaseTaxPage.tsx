@@ -741,7 +741,7 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
                       <option value="">-- เลือกผู้ขาย หรือ กรอกเองด้านล่าง --</option>
                       {suppliers.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {s.displayName} (เลขผู้เสียภาษี: {s.taxpayerId || '-'}) - VAT {s.defaultVatRate !== undefined ? s.defaultVatRate : 7}%
+                          {s.displayName}
                         </option>
                       ))}
                     </select>
