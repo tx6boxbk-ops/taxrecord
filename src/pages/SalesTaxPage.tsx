@@ -594,7 +594,6 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                   <th className="px-3 py-3 text-center">สาขา</th>
                   <th className="px-3 py-3 text-right">มูลค่าก่อน VAT</th>
                   <th className="px-3 py-3 text-right text-indigo-800">VAT ({sortedRecords[0]?.vatRate || 7}%)</th>
-                  <th className="px-3 py-3 text-right">รวมทั้งสิ้น</th>
                   <th className="px-3 py-3 text-right">การทำงาน</th>
                 </tr>
               </thead>
@@ -635,9 +634,6 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                     <td className="px-3 py-2.5 text-right font-medium text-indigo-800 font-mono">
                       {formatCurrency(r.vatAmount)}
                     </td>
-                    <td className="px-3 py-2.5 text-right font-bold text-slate-900 font-mono">
-                      {formatCurrency(r.totalAmount)}
-                    </td>
                     <td className="px-3 py-2.5 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
@@ -669,9 +665,6 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                   </td>
                   <td className="px-3 py-2.5 text-right text-indigo-800 font-mono">
                     {formatCurrency(summary.vatAmount)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono">
-                    {formatCurrency(summary.totalAmount)}
                   </td>
                   <td></td>
                 </tr>
