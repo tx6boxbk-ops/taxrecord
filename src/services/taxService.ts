@@ -182,8 +182,8 @@ export async function createSalesTaxRecord(
   // Calculation
   const { vatAmount, totalAmount } =
     data.customVatAmount !== undefined && data.customTotalAmount !== undefined
-      ? { vatAmount: data.customVatAmount, totalAmount: data.customTotalAmount }
-      : calculateVatExclusive(data.taxableAmount, data.vatRate);
+      ? { vatAmount: Math.abs(data.customVatAmount), totalAmount: data.customTotalAmount }
+      : calculateVatExclusive(data.taxableAmount, Math.abs(data.vatRate));
 
   const newRecord: SalesTaxRecord = {
     id: generateId(),
@@ -198,8 +198,8 @@ export async function createSalesTaxRecord(
     customerBranchTypeSnapshot: data.customerBranchTypeSnapshot,
     customerBranchNumberSnapshot: String(data.customerBranchNumberSnapshot || '00000').trim(),
     taxableAmount: roundToTwoDecimals(data.taxableAmount),
-    vatRate: roundToTwoDecimals(data.vatRate),
-    vatAmount: roundToTwoDecimals(vatAmount),
+    vatRate: Math.abs(roundToTwoDecimals(data.vatRate)),
+    vatAmount: Math.abs(roundToTwoDecimals(vatAmount)),
     totalAmount: roundToTwoDecimals(totalAmount),
     note: (data.note || '').trim(),
     createdAt: now,
@@ -237,11 +237,11 @@ export async function updateSalesTaxRecord(
   let totalAmount = existing.totalAmount;
 
   if (data.customVatAmount !== undefined && data.customTotalAmount !== undefined) {
-    vatAmount = roundToTwoDecimals(data.customVatAmount);
+    vatAmount = Math.abs(roundToTwoDecimals(data.customVatAmount));
     totalAmount = roundToTwoDecimals(data.customTotalAmount);
   } else if (data.taxableAmount !== undefined || data.vatRate !== undefined) {
-    const calc = calculateVatExclusive(taxableAmount, vatRate);
-    vatAmount = calc.vatAmount;
+    const calc = calculateVatExclusive(taxableAmount, Math.abs(vatRate));
+    vatAmount = Math.abs(calc.vatAmount);
     totalAmount = calc.totalAmount;
   }
 
@@ -251,8 +251,8 @@ export async function updateSalesTaxRecord(
     taxYear,
     taxMonth,
     taxableAmount,
-    vatRate,
-    vatAmount,
+    vatRate: Math.abs(vatRate),
+    vatAmount: Math.abs(vatAmount),
     totalAmount,
     updatedAt: new Date().toISOString(),
   };
@@ -327,7 +327,7 @@ export function calculateSummary(
 
   for (const r of records) {
     taxableAmount += r.taxableAmount;
-    vatAmount += r.vatAmount;
+    vatAmount += Math.abs(r.vatAmount);
     totalAmount += r.totalAmount;
   }
 

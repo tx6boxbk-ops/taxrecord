@@ -125,7 +125,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ onShowToast }) => 
 
     try {
       const parsedRate = Number(defaultVatRate);
-      const vatRateToSave = isNaN(parsedRate) ? 7 : parsedRate;
+      const vatRateToSave = isNaN(parsedRate) ? 7 : Math.abs(parsedRate);
 
       if (editingCustomer) {
         await updateCustomer(editingCustomer.id, {
@@ -464,7 +464,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ onShowToast }) => 
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  อัตรา VAT ประจำตัวผู้ซื้อ (%) <span className="text-slate-400 font-normal">(ค่าตั้งต้นใช้คำนวณภาษีขาย สามารถเป็นค่าติดลบได้)</span>
+                  อัตรา VAT ประจำตัวผู้ซื้อ (%)
                 </label>
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1.5">
@@ -488,27 +488,17 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ onShowToast }) => 
                           : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                       }`}
                     >
-                      0%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDefaultVatRate(-7)}
-                      className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border cursor-pointer transition ${
-                        Number(defaultVatRate) === -7
-                          ? 'bg-rose-700 text-white border-rose-700'
-                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      -7%
+                      0% (ยกเว้น)
                     </button>
                   </div>
                   <div className="flex-1 relative">
                     <input
                       type="number"
                       step="any"
+                      min="0"
                       value={defaultVatRate}
                       onChange={(e) => setDefaultVatRate(e.target.value)}
-                      placeholder="เช่น 7 หรือ -7"
+                      placeholder="เช่น 7"
                       className="w-full text-sm px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-center focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
                     />
                     <span className="absolute right-3 top-2 text-xs text-slate-400 font-mono">%</span>

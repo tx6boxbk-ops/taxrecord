@@ -11,41 +11,40 @@ export function roundToTwoDecimals(value: number): number {
 /**
  * Calculates VAT and Total Amount from a Taxable Base Amount (VAT Exclusive)
  * VAT = taxableAmount * vatRate / 100
- * Total = taxableAmount + |VAT| (ยอดรวมทั้งสิ้นของประเภท VAT ที่ติดลบ จะต้องเป็น มูลค่าสินค้า/บริการ + ภาษีมูลค่าเพิ่ม)
+ * Total = taxableAmount + VAT
  */
 export function calculateVatExclusive(
   taxableAmount: number,
   vatRate: number = 7
 ): { vatAmount: number; totalAmount: number } {
   const cleanTaxable = Math.max(0, taxableAmount || 0);
-  const cleanRate = isNaN(vatRate) ? 0 : vatRate;
+  const cleanRate = Math.abs(isNaN(vatRate) ? 0 : vatRate);
 
   const vatAmount = roundToTwoDecimals((cleanTaxable * cleanRate) / 100);
-  const totalAmount = roundToTwoDecimals(cleanTaxable + Math.abs(vatAmount));
+  const totalAmount = roundToTwoDecimals(cleanTaxable + vatAmount);
 
   return { vatAmount, totalAmount };
 }
 
 /**
  * Extracts Taxable Base and VAT from a Total Amount (VAT Inclusive)
- * Taxable = totalAmount * 100 / (100 + |vatRate|)
- * VAT = cleanRate < 0 ? -rawVat : rawVat
+ * Taxable = totalAmount * 100 / (100 + vatRate)
+ * VAT = totalAmount - taxableAmount
  */
 export function calculateVatInclusive(
   totalAmount: number,
   vatRate: number = 7
 ): { taxableAmount: number; vatAmount: number } {
   const cleanTotal = Math.max(0, totalAmount || 0);
-  const cleanRate = isNaN(vatRate) ? 0 : vatRate;
+  const cleanRate = Math.abs(isNaN(vatRate) ? 0 : vatRate);
 
-  const absRate = Math.abs(cleanRate);
-  const denominator = 100 + absRate;
+  const denominator = 100 + cleanRate;
   const taxableAmount =
     denominator !== 0
       ? roundToTwoDecimals((cleanTotal * 100) / denominator)
       : cleanTotal;
   const rawVat = roundToTwoDecimals(cleanTotal - taxableAmount);
-  const vatAmount = cleanRate < 0 ? -rawVat : rawVat;
+  const vatAmount = Math.max(0, rawVat);
 
   return { taxableAmount, vatAmount };
 }

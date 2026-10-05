@@ -100,6 +100,23 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
   const [note, setNote] = useState('');
   const [formError, setFormError] = useState('');
 
+  // Sanitize any existing records where VAT or VAT rate was negative
+  React.useEffect(() => {
+    db.salesTaxRecords.toArray().then((records) => {
+      const negativeRecords = records.filter((r) => r.vatAmount < 0 || r.vatRate < 0);
+      if (negativeRecords.length > 0) {
+        Promise.all(
+          negativeRecords.map((r) =>
+            db.salesTaxRecords.update(r.id, {
+              vatAmount: Math.abs(r.vatAmount),
+              vatRate: Math.abs(r.vatRate),
+            })
+          )
+        );
+      }
+    });
+  }, []);
+
   // Live Queries
   const allSales = useLiveQuery(() => db.salesTaxRecords.toArray()) || [];
   const customers = useLiveQuery(() => db.customers.orderBy('displayName').toArray()) || [];
@@ -144,9 +161,9 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
       return;
     }
     const taxable = parseAmount(valStr);
-    const rate = parseAmount(vatRateStr);
+    const rate = Math.abs(parseAmount(vatRateStr));
     const calc = calculateVatExclusive(taxable, rate);
-    setVatAmountStr(calc.vatAmount.toFixed(2));
+    setVatAmountStr(Math.abs(calc.vatAmount).toFixed(2));
     setTotalAmountStr(calc.totalAmount.toFixed(2));
   };
 
@@ -158,23 +175,23 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
       return;
     }
     const total = parseAmount(valStr);
-    const rate = parseAmount(vatRateStr);
+    const rate = Math.abs(parseAmount(vatRateStr));
     const calc = calculateVatInclusive(total, rate);
     setTaxableAmountStr(calc.taxableAmount.toFixed(2));
-    setVatAmountStr(calc.vatAmount.toFixed(2));
+    setVatAmountStr(Math.abs(calc.vatAmount).toFixed(2));
   };
 
   const handleVatRateChange = (rateStr: string) => {
-    setVatRateStr(rateStr);
-    const rate = parseAmount(rateStr);
+    const rateNum = Math.abs(parseAmount(rateStr));
+    setVatRateStr(rateNum.toString());
     if (calcMode === 'EXCLUSIVE') {
       if (!taxableAmountStr.trim()) {
         setVatAmountStr('');
         setTotalAmountStr('');
       } else {
         const taxable = parseAmount(taxableAmountStr);
-        const calc = calculateVatExclusive(taxable, rate);
-        setVatAmountStr(calc.vatAmount.toFixed(2));
+        const calc = calculateVatExclusive(taxable, rateNum);
+        setVatAmountStr(Math.abs(calc.vatAmount).toFixed(2));
         setTotalAmountStr(calc.totalAmount.toFixed(2));
       }
     } else {
@@ -183,9 +200,9 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
         setVatAmountStr('');
       } else {
         const total = parseAmount(totalAmountStr);
-        const calc = calculateVatInclusive(total, rate);
+        const calc = calculateVatInclusive(total, rateNum);
         setTaxableAmountStr(calc.taxableAmount.toFixed(2));
-        setVatAmountStr(calc.vatAmount.toFixed(2));
+        setVatAmountStr(Math.abs(calc.vatAmount).toFixed(2));
       }
     }
   };
@@ -200,7 +217,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
       setCustomerBranchNumber(selected.branchNumber || '00000');
 
       // Auto-apply customer's default VAT rate
-      const customerRate = selected.defaultVatRate !== undefined ? selected.defaultVatRate : 7;
+      const customerRate = selected.defaultVatRate !== undefined ? Math.abs(selected.defaultVatRate) : 7;
       setVatRateStr(customerRate.toString());
 
       if (calcMode === 'EXCLUSIVE') {
@@ -210,7 +227,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
         } else {
           const taxable = parseAmount(taxableAmountStr);
           const calc = calculateVatExclusive(taxable, customerRate);
-          setVatAmountStr(calc.vatAmount.toFixed(2));
+          setVatAmountStr(Math.abs(calc.vatAmount).toFixed(2));
           setTotalAmountStr(calc.totalAmount.toFixed(2));
         }
       } else {
@@ -221,7 +238,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
           const total = parseAmount(totalAmountStr);
           const calc = calculateVatInclusive(total, customerRate);
           setTaxableAmountStr(calc.taxableAmount.toFixed(2));
-          setVatAmountStr(calc.vatAmount.toFixed(2));
+          setVatAmountStr(Math.abs(calc.vatAmount).toFixed(2));
         }
       }
     }
@@ -269,8 +286,8 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
     setCustomerBranchNumber(record.customerBranchNumberSnapshot);
 
     setTaxableAmountStr(record.taxableAmount.toFixed(2));
-    setVatRateStr(record.vatRate.toString());
-    setVatAmountStr(record.vatAmount.toFixed(2));
+    setVatRateStr(Math.abs(record.vatRate).toString());
+    setVatAmountStr(Math.abs(record.vatAmount).toFixed(2));
     setTotalAmountStr(record.totalAmount.toFixed(2));
     setCalcMode('EXCLUSIVE');
     setNote(record.note || '');
@@ -321,9 +338,9 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
     }
 
     const taxable = parseAmount(taxableAmountStr);
-    const vat = parseAmount(vatAmountStr);
+    const vat = Math.abs(parseAmount(vatAmountStr));
     const total = totalAmountStr.trim() ? parseAmount(totalAmountStr) : roundToTwoDecimals(taxable + vat);
-    const vatRate = parseAmount(vatRateStr);
+    const vatRate = Math.abs(parseAmount(vatRateStr));
 
     if (taxable < 0) {
       setFormError('มูลค่าสินค้าหรือบริการต้องไม่ติดลบ');
@@ -429,7 +446,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
         address: quickCustomerAddress.trim(),
         phone: quickCustomerPhone.trim(),
         note: quickCustomerNote.trim(),
-        defaultVatRate: isNaN(parsedRate) ? 7 : parsedRate,
+        defaultVatRate: isNaN(parsedRate) ? 7 : Math.abs(parsedRate),
       });
 
       handleCustomerSelect(newCust.id);
@@ -561,7 +578,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
           <div>
             <span className="text-indigo-700">ภาษีขาย (VAT): </span>
             <span className="font-bold text-indigo-900 bg-indigo-100 px-2 py-0.5 rounded">
-              ฿ {formatCurrency(summary.vatAmount)}
+              ฿ {formatCurrency(Math.abs(summary.vatAmount))}
             </span>
           </div>
           <div>
@@ -597,7 +614,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                   <th className="px-3 py-3">เลขประจำตัวผู้เสียภาษี</th>
                   <th className="px-3 py-3 text-center">สาขา</th>
                   <th className="px-3 py-3 text-right">มูลค่าก่อน VAT</th>
-                  <th className="px-3 py-3 text-right text-indigo-800">VAT ({sortedRecords[0]?.vatRate || 7}%)</th>
+                  <th className="px-3 py-3 text-right text-indigo-800">VAT ({Math.abs(sortedRecords[0]?.vatRate || 7)}%)</th>
                   <th className="px-3 py-3 text-right">การทำงาน</th>
                 </tr>
               </thead>
@@ -636,7 +653,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                       {formatCurrency(r.taxableAmount)}
                     </td>
                     <td className="px-3 py-2.5 text-right font-medium text-indigo-800 font-mono">
-                      {formatCurrency(r.vatAmount)}
+                      {formatCurrency(Math.abs(r.vatAmount))}
                     </td>
                     <td className="px-3 py-2.5 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
@@ -668,7 +685,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                     {formatCurrency(summary.taxableAmount)}
                   </td>
                   <td className="px-3 py-2.5 text-right text-indigo-800 font-mono">
-                    {formatCurrency(summary.vatAmount)}
+                    {formatCurrency(Math.abs(summary.vatAmount))}
                   </td>
                   <td></td>
                 </tr>
@@ -966,6 +983,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       placeholder="0.00"
                       value={vatAmountStr}
                       onChange={(e) => {
@@ -973,8 +991,8 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                         setVatAmountStr(val);
                         if (val.trim() && taxableAmountStr.trim()) {
                           const taxable = parseAmount(taxableAmountStr);
-                          const vat = parseAmount(val);
-                          const total = roundToTwoDecimals(taxable + Math.abs(vat));
+                          const vat = Math.abs(parseAmount(val));
+                          const total = roundToTwoDecimals(taxable + vat);
                           setTotalAmountStr(total.toFixed(2));
                         }
                       }}
@@ -1162,7 +1180,7 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  อัตรา VAT ประจำตัวผู้ซื้อ (%) <span className="text-slate-400 font-normal">(ค่าตั้งต้นใช้คำนวณภาษีขาย สามารถเป็นค่าติดลบได้)</span>
+                  อัตรา VAT ประจำตัวผู้ซื้อ (%)
                 </label>
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1.5">
@@ -1186,27 +1204,17 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
                           : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                       }`}
                     >
-                      0%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickCustomerVatRate('-7')}
-                      className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border cursor-pointer transition ${
-                        quickCustomerVatRate === '-7'
-                          ? 'bg-rose-700 text-white border-rose-700'
-                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      -7%
+                      0% (ยกเว้น)
                     </button>
                   </div>
                   <div className="flex-1 relative">
                     <input
                       type="number"
                       step="any"
+                      min="0"
                       value={quickCustomerVatRate}
                       onChange={(e) => setQuickCustomerVatRate(e.target.value)}
-                      placeholder="เช่น 7 หรือ -7"
+                      placeholder="เช่น 7"
                       className="w-full text-xs px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-center focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
                     />
                     <span className="absolute right-3 top-1.5 text-xs text-slate-400 font-mono">%</span>
