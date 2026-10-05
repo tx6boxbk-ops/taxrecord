@@ -34,21 +34,6 @@ import {
 import { formatCurrency, roundToTwoDecimals } from '../utils/calculation';
 import { useMonth } from '../context/MonthContext';
 
-const ENGLISH_MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
 interface ReportsPageProps {
   onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -111,9 +96,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
   const purchaseVat = purchaseSummary.vatAmount;
   const netTaxPayable = roundToTwoDecimals(salesVat - purchaseVat);
 
-  const engMonth = ENGLISH_MONTHS[selectedMonthNumber - 1] || 'August';
-  const beShortYear = String(buddhistYear).slice(-2);
-  const monthYearLabel = `${engMonth}-${beShortYear}`;
+  const monthYearLabel = `${selectedMonth} พ.ศ. ${buddhistYear}`;
 
   const handleExportExcel = async () => {
     if (!settings) {
@@ -363,17 +346,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
         {reportType === 'TAX_PAYABLE' ? (
           <div className="space-y-6">
             {/* Visual Graphic Matching Uploaded Spreadsheet */}
-            <div className="bg-slate-50/70 border border-slate-300 rounded-2xl p-6 sm:p-10 flex flex-col items-center justify-center relative overflow-hidden shadow-2xs">
-              {/* Subtle spreadsheet grid pattern */}
-              <div
-                className="absolute inset-0 opacity-25 pointer-events-none"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(to right, #94a3b8 1px, transparent 1px), linear-gradient(to bottom, #94a3b8 1px, transparent 1px)',
-                  backgroundSize: '28px 28px',
-                }}
-              />
-
+            <div className="bg-slate-50 border border-slate-300 rounded-2xl p-6 sm:p-10 flex flex-col items-center justify-center relative overflow-hidden shadow-2xs">
               <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-8 sm:gap-14 w-full py-2">
                 {/* Left Card: Month title & Sales/Purchase amounts */}
                 <div className="flex flex-col items-center">

@@ -491,8 +491,7 @@ export async function exportTaxPayableToPdf(
   const box1W = 750;
   const box1H = 260;
 
-  const engMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const monthYearLabel = `${engMonths[month - 1]}-${String(beYear).slice(-2)}`;
+  const monthYearLabel = `${monthName} พ.ศ. ${beYear}`;
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#0f172a';
