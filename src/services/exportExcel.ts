@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { BusinessSettings, PurchaseTaxRecord, SalesTaxRecord } from '../types';
 import { formatThaiDateShort, getThaiMonthName, toBuddhistYear } from '../utils/thaiDate';
+import { roundToTwoDecimals } from '../utils/calculation';
 import { calculateSummary } from './taxService';
 
 /**
@@ -258,21 +259,26 @@ export function exportTaxPayableToExcel(
 
   const purchaseSummary = calculateSummary(purchaseRecords);
   const salesSummary = calculateSummary(salesRecords);
-  const netTax = Number((salesSummary.vatAmount - purchaseSummary.vatAmount).toFixed(2));
+
+  const salesTaxable = salesSummary.taxableAmount;
+  const purchaseTaxable = purchaseSummary.taxableAmount;
+  const salesVat = roundToTwoDecimals(salesTaxable * 0.07);
+  const purchaseVat = roundToTwoDecimals(purchaseTaxable * 0.07);
+  const netTax = roundToTwoDecimals(salesVat - purchaseVat);
 
   // Sheet 1: สรุปภาษีที่ต้องจ่าย
   const summaryData: Array<Array<XLSX.CellObject | string>> = [
-    ['รายงานสรุปภาษีที่ต้องจ่าย (คำนวณภาษีมูลค่าเพิ่ม ภ.พ.30)'],
+    ['รายงานสรุปภาษีที่ต้องจ่าย (คำนวณภาษีมูลค่าเพิ่ม ภ.พ.30 กรมสรรพากร)'],
     [`ชื่อผู้ประกอบการ: ${settings.businessName || '-'}`, '', `เลขประจำตัวผู้เสียภาษี: ${settings.taxpayerId || '-'}`],
     [`สถานประกอบการ: ${settings.branchType === 'HEAD' ? 'สำนักงานใหญ่' : 'สาขาที่ ' + (settings.branchNumber || '00000')}`],
     [`ประจำเดือนภาษี: ${monthName} พ.ศ. ${beYear}`],
     [],
-    ['รายการคำนวณภาษี', 'มูลค่าสินค้า/บริการ (ก่อน VAT)', 'ภาษีมูลค่าเพิ่ม (VAT)', 'จำนวนรายการ'],
-    ['1. ยอดขายและภาษีขาย (Output Tax)', toNumberCell(salesSummary.taxableAmount), toNumberCell(salesSummary.vatAmount), `${salesSummary.count} รายการ`],
-    ['2. ยอดซื้อและภาษีซื้อ (Input Tax)', toNumberCell(purchaseSummary.taxableAmount), toNumberCell(purchaseSummary.vatAmount), `${purchaseSummary.count} รายการ`],
+    ['รายการคำนวณภาษี (ภ.พ.30)', 'มูลค่าสินค้า/บริการ (ก่อน VAT)', 'ภาษีมูลค่าเพิ่ม (VAT 7%)', 'จำนวนรายการ'],
+    ['1. ยอดขายและภาษีขาย (Output Tax)', toNumberCell(salesTaxable), toNumberCell(salesVat), `${salesSummary.count} รายการ`],
+    ['2. ยอดซื้อและภาษีซื้อ (Input Tax)', toNumberCell(purchaseTaxable), toNumberCell(purchaseVat), `${purchaseSummary.count} รายการ`],
     [],
     [
-      netTax >= 0 ? 'สรุป: ยอดเสียภาษี (ภาษีที่ต้องชำระ)' : 'สรุป: ภาษีชำระเกิน (เครดิตยกไป)',
+      netTax >= 0 ? 'สรุป: ยอดภาษีสุทธิต้องชำระ (นำส่งกรมสรรพากร)' : 'สรุป: ภาษีชำระเกิน (เครดิตยกไป)',
       '',
       toNumberCell(Math.abs(netTax)),
       netTax >= 0 ? 'ภาษีขายมากกว่าภาษีซื้อ (นำส่งกรมสรรพากร)' : 'ภาษีซื้อมากกว่าภาษีขาย (ขอคืน/เครดิตยกไป)',

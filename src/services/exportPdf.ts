@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { BusinessSettings, PurchaseTaxRecord, SalesTaxRecord } from '../types';
-import { formatCurrency } from '../utils/calculation';
+import { formatCurrency, roundToTwoDecimals } from '../utils/calculation';
 import { formatThaiDateShort, getThaiMonthName, toBuddhistYear } from '../utils/thaiDate';
 import { calculateSummary } from './taxService';
 
@@ -435,7 +435,12 @@ export async function exportTaxPayableToPdf(
 
   const purchaseSummary = calculateSummary(purchaseRecords);
   const salesSummary = calculateSummary(salesRecords);
-  const netTax = Number((salesSummary.vatAmount - purchaseSummary.vatAmount).toFixed(2));
+
+  const salesTaxable = salesSummary.taxableAmount;
+  const purchaseTaxable = purchaseSummary.taxableAmount;
+  const salesVat = roundToTwoDecimals(salesTaxable * 0.07);
+  const purchaseVat = roundToTwoDecimals(purchaseTaxable * 0.07);
+  const netTax = roundToTwoDecimals(salesVat - purchaseVat);
 
   const canvasWidth = 2376;
   const canvasHeight = 1680;
@@ -570,12 +575,12 @@ export async function exportTaxPayableToPdf(
   ctx.fillText('ภาษีซื้อ เดือนนี้', box2X + 30, currentY + rowH + 65);
 
   ctx.font = `bold 32px ${fontFamily}`;
-  ctx.fillText('ยอดเสียภาษี', box2X + 30, currentY + rowH * 2 + 14 + 75);
+  ctx.fillText('ภาษีสุทธิต้องชำระ', box2X + 30, currentY + rowH * 2 + 14 + 75);
 
   ctx.textAlign = 'right';
   ctx.font = `bold 34px 'Courier New', monospace`;
-  ctx.fillText(formatCurrency(salesSummary.vatAmount), box2X + box2W - 30, currentY + 65);
-  ctx.fillText(formatCurrency(purchaseSummary.vatAmount), box2X + box2W - 30, currentY + rowH + 65);
+  ctx.fillText(formatCurrency(salesVat), box2X + box2W - 30, currentY + 65);
+  ctx.fillText(formatCurrency(purchaseVat), box2X + box2W - 30, currentY + rowH + 65);
 
   ctx.font = `bold 44px 'Courier New', monospace`;
   ctx.fillText(formatCurrency(Math.abs(netTax)), box2X + box2W - 30, currentY + rowH * 2 + 14 + 78);
@@ -613,8 +618,8 @@ export async function exportTaxPayableToPdf(
   ctx.fillText(`1. ยอดขายและภาษีขาย (${salesSummary.count} รายการ)`, marginX + 30, rY + 36);
   ctx.textAlign = 'right';
   ctx.font = `22px 'Courier New', monospace`;
-  ctx.fillText(formatCurrency(salesSummary.taxableAmount), marginX + 850, rY + 36);
-  ctx.fillText(formatCurrency(salesSummary.vatAmount), marginX + 1350, rY + 36);
+  ctx.fillText(formatCurrency(salesTaxable), marginX + 850, rY + 36);
+  ctx.fillText(formatCurrency(salesVat), marginX + 1350, rY + 36);
   ctx.font = `20px ${fontFamily}`;
   ctx.fillText('ภาษีขายที่ต้องนำส่ง (Output Tax)', canvasWidth - marginX - 30, rY + 36);
 
@@ -626,8 +631,8 @@ export async function exportTaxPayableToPdf(
   ctx.fillText(`2. ยอดซื้อและภาษีซื้อ (${purchaseSummary.count} รายการ)`, marginX + 30, rY + 36);
   ctx.textAlign = 'right';
   ctx.font = `22px 'Courier New', monospace`;
-  ctx.fillText(formatCurrency(purchaseSummary.taxableAmount), marginX + 850, rY + 36);
-  ctx.fillText(formatCurrency(purchaseSummary.vatAmount), marginX + 1350, rY + 36);
+  ctx.fillText(formatCurrency(purchaseTaxable), marginX + 850, rY + 36);
+  ctx.fillText(formatCurrency(purchaseVat), marginX + 1350, rY + 36);
   ctx.font = `20px ${fontFamily}`;
   ctx.fillText('ภาษีซื้อที่นำมาหัก (Input Tax)', canvasWidth - marginX - 30, rY + 36);
 
@@ -639,7 +644,7 @@ export async function exportTaxPayableToPdf(
   ctx.fillStyle = '#0f172a';
   ctx.textAlign = 'left';
   ctx.font = `bold 24px ${fontFamily}`;
-  ctx.fillText(netTax >= 0 ? 'สรุป: ภาษีที่ต้องชำระ (ยอดเสียภาษี)' : 'สรุป: ภาษีชำระเกิน (เครดิตยกไป)', marginX + 30, rY + 42);
+  ctx.fillText(netTax >= 0 ? 'สรุป: ยอดภาษีสุทธิต้องชำระ (นำส่งกรมสรรพากร)' : 'สรุป: ภาษีชำระเกิน (เครดิตยกไป)', marginX + 30, rY + 42);
   ctx.textAlign = 'right';
   ctx.font = `bold 28px 'Courier New', monospace`;
   ctx.fillText(formatCurrency(Math.abs(netTax)), marginX + 1350, rY + 42);

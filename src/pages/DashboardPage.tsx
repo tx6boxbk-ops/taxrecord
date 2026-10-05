@@ -14,7 +14,7 @@ import {
   calculateSummary,
   getYearlyTaxOverview,
 } from '../services/taxService';
-import { formatCurrency } from '../utils/calculation';
+import { formatCurrency, roundToTwoDecimals } from '../utils/calculation';
 import {
   getThaiMonthName,
   getThaiMonthShortName,
@@ -64,14 +64,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const purchaseSummary = calculateSummary(filteredPurchases);
   const salesSummary = calculateSummary(filteredSales);
 
-  // คำนวณยอดภาษีที่ต้องชำระตามสูตรที่กำหนด
-  const purchaseTotal = purchaseSummary.totalAmount;
-  const salesTotal = salesSummary.totalAmount;
+  // คำนวณภาษีมูลค่าเพิ่มตามแบบ ภ.พ.30 (กรมสรรพากร)
+  // 1. ภาษีขายเดือนนี้ = ยอดขายในเดือนนี้ * 7% (ปัดเศษ 2 ตำแหน่ง)
+  // 2. ภาษีซื้อเดือนนี้ = ยอดซื้อที่มีสิทธินำมาหัก * 7% (ปัดเศษ 2 ตำแหน่ง)
+  // 3. ภาษีสุทธิต้องชำระ = ภาษีขาย - ภาษีซื้อ
+  const salesTaxable = salesSummary.taxableAmount;
+  const purchaseTaxable = purchaseSummary.taxableAmount;
 
-  const taxableSales = salesTotal * 0.8418;
-  const outputVat = taxableSales * 0.08315;
-  const inputVat = purchaseTotal * 0.07;
-  const taxPayable = outputVat - inputVat;
+  const salesVat = roundToTwoDecimals(salesTaxable * 0.07);
+  const purchaseVat = roundToTwoDecimals(purchaseTaxable * 0.07);
+  const taxPayable = roundToTwoDecimals(salesVat - purchaseVat);
 
   return (
     <div className="space-y-6">
@@ -231,37 +233,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
 
           <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
             <div className="flex items-center justify-between">
-              <span>ยอดขายทั้งสิ้น:</span>
+              <span>ยอดขายในเดือนนี้:</span>
               <span className="font-semibold text-slate-800">
-                ฿ {formatCurrency(salesTotal)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-slate-500">
-              <span>ยอดขายที่ต้องเสียภาษี (84.18%):</span>
-              <span className="font-mono text-slate-700">
-                ฿ {formatCurrency(taxableSales)}
+                ฿ {formatCurrency(salesTaxable)}
               </span>
             </div>
             <div className="flex items-center justify-between text-indigo-700">
-              <span>ภาษีขาย (8.315%):</span>
+              <span>ภาษีขาย (7%):</span>
               <span className="font-semibold font-mono">
-                ฿ {formatCurrency(outputVat)}
+                ฿ {formatCurrency(salesVat)}
               </span>
             </div>
             <div className="pt-1 border-t border-slate-100 flex items-center justify-between">
-              <span>ยอดรวมทั้งสิ้น (ภาษีซื้อ):</span>
+              <span>ยอดซื้อที่มีสิทธินำมาหัก:</span>
               <span className="font-semibold text-slate-800">
-                ฿ {formatCurrency(purchaseTotal)}
+                ฿ {formatCurrency(purchaseTaxable)}
               </span>
             </div>
             <div className="flex items-center justify-between text-teal-700">
               <span>ภาษีซื้อ (7%):</span>
               <span className="font-semibold font-mono">
-                ฿ {formatCurrency(inputVat)}
+                ฿ {formatCurrency(purchaseVat)}
               </span>
             </div>
             <div className="pt-1 border-t border-slate-100 flex items-center justify-between font-bold text-slate-900">
-              <span>ยอดภาษีที่ต้องชำระ:</span>
+              <span>ยอดภาษีสุทธิต้องชำระ:</span>
               <span
                 className={`font-mono ${
                   taxPayable >= 0 ? 'text-amber-800' : 'text-emerald-700'

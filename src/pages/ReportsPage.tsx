@@ -30,6 +30,7 @@ import {
   formatThaiDateShort,
   getThaiMonthName,
   toBuddhistYear,
+  THAI_MONTHS_FULL,
 } from '../utils/thaiDate';
 import { formatCurrency, roundToTwoDecimals } from '../utils/calculation';
 import { useMonth } from '../context/MonthContext';
@@ -50,6 +51,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
 
   const [reportType, setReportType] = useState<'PURCHASE' | 'SALES' | 'TAX_PAYABLE'>('PURCHASE');
   const [taxPayableSubTab, setTaxPayableSubTab] = useState<'OVERVIEW' | 'SALES_ITEMS' | 'PURCHASE_ITEMS'>('OVERVIEW');
+  const [taxCreditCarriedOverStr, setTaxCreditCarriedOverStr] = useState<string>('0');
   const [isExporting, setIsExporting] = useState(false);
 
   // Live queries strictly filtered by global selected year and month
@@ -89,12 +91,24 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
 
   const summary = reportType === 'PURCHASE' ? purchaseSummary : salesSummary;
 
-  // Calculations for Tax Payable (ภ.พ.30)
+  // Calculations for Tax Payable (ภ.พ.30 ตามระบบ E-FILING กรมสรรพากร)
   const salesTaxable = salesSummary.taxableAmount;
   const purchaseTaxable = purchaseSummary.taxableAmount;
-  const salesVat = salesSummary.vatAmount;
-  const purchaseVat = purchaseSummary.vatAmount;
-  const netTaxPayable = roundToTwoDecimals(salesVat - purchaseVat);
+
+  // กรมสรรพากรคำนวณตามแบบ ภ.พ.30:
+  // 1. ภาษีขายเดือนนี้ = ยอดขายในเดือนนี้ * 7% (ปัดเศษ 2 ตำแหน่ง)
+  // 2. ภาษีซื้อเดือนนี้ = ยอดซื้อที่มีสิทธินำมาหัก * 7% (ปัดเศษ 2 ตำแหน่ง)
+  // 3. ภาษีที่ต้องชำระเดือนนี้ = ภาษีขาย - ภาษีซื้อ
+  // 4. ภาษีสุทธิต้องชำระ = ภาษีที่ต้องชำระเดือนนี้ - ภาษีชำระเกินยกมาจากเดือนก่อนหน้า
+  const salesVat = roundToTwoDecimals(salesTaxable * 0.07);
+  const purchaseVat = roundToTwoDecimals(purchaseTaxable * 0.07);
+  const currentMonthTaxPayable = roundToTwoDecimals(salesVat - purchaseVat);
+  const taxCreditCarriedOver = Math.max(0, parseFloat(taxCreditCarriedOverStr) || 0);
+  const netTaxPayable = roundToTwoDecimals(currentMonthTaxPayable - taxCreditCarriedOver);
+
+  const prevMonthNumber = selectedMonthNumber === 1 ? 12 : selectedMonthNumber - 1;
+  const prevMonthName = THAI_MONTHS_FULL[prevMonthNumber - 1];
+  const prevBuddhistYear = selectedMonthNumber === 1 ? buddhistYear - 1 : buddhistYear;
 
   const monthYearLabel = `${selectedMonth} พ.ศ. ${buddhistYear}`;
 
@@ -413,7 +427,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                       {/* Row 3: Tax Payable */}
                       <tr>
                         <td className="w-1/2 bg-[#ffff00] text-slate-950 font-extrabold text-sm sm:text-base px-5 py-4 border-r border-slate-400">
-                          ยอดเสียภาษี
+                          ภาษีสุทธิต้องชำระ
                         </td>
                         <td className="w-1/2 bg-[#fce4d6] text-slate-950 font-mono font-black text-xl sm:text-2xl px-5 py-4 text-right">
                           {formatCurrency(Math.abs(netTaxPayable))}
@@ -421,6 +435,104 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                       </tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+
+            {/* E-FILING ภ.พ.30 Form Panel Matching Revenue Department */}
+            <div className="bg-white border border-slate-300 rounded-xl p-4 sm:p-5 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded shadow-2xs">
+                    ภ.พ.30
+                  </span>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    ข้อมูลการคำนวณภาษี (ยื่นแบบแสดงรายการภาษีมูลค่าเพิ่ม ภ.พ.30 กรมสรรพากร)
+                  </h3>
+                </div>
+                <span className="text-xs text-slate-500 font-mono">
+                  รอบเดือน{selectedMonth} พ.ศ. {buddhistYear}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">
+                {/* 1. ยอดขาย และยอดซื้อ */}
+                <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2.5">
+                  <div className="font-bold text-slate-800 text-xs border-b border-slate-200 pb-1.5 flex items-center justify-between">
+                    <span>1. ยอดขาย และยอดซื้อ</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600">ยอดขายในเดือนนี้:</span>
+                    <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {formatCurrency(salesTaxable)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>ยอดขายเสียภาษีร้อยละ 0:</span>
+                    <span className="font-mono">-</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>ยอดขายที่ได้รับยกเว้น:</span>
+                    <span className="font-mono">-</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                    <span className="text-slate-600">ยอดซื้อที่มีสิทธินำมาหัก:</span>
+                    <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {formatCurrency(purchaseTaxable)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. ภาษีขาย และภาษีซื้อ */}
+                <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2.5">
+                  <div className="font-bold text-slate-800 text-xs border-b border-slate-200 pb-1.5 flex items-center justify-between">
+                    <span>2. ภาษีขาย และภาษีซื้อ</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600">ภาษีขายเดือนนี้ (7%):</span>
+                    <span className="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                      {formatCurrency(salesVat)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600">ภาษีซื้อเดือนนี้ (7%):</span>
+                    <span className="font-mono font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                      {formatCurrency(purchaseVat)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                    <span className="font-semibold text-slate-800">ภาษีที่ต้องชำระเดือนนี้:</span>
+                    <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {formatCurrency(currentMonthTaxPayable)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. ภาษีมูลค่าเพิ่มที่ชำระเกินยกมา & ภาษีสุทธิต้องชำระ */}
+                <div className="bg-amber-50/70 p-3.5 rounded-lg border border-amber-200 space-y-2.5">
+                  <div className="font-bold text-amber-900 text-xs border-b border-amber-200 pb-1.5 flex items-center justify-between">
+                    <span>3. ภาษีมูลค่าเพิ่มที่ชำระเกินยกมา</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-slate-600 text-[11px]">
+                      ภาษีชำระเกินยกมาจากเดือน {prevMonthName} {prevBuddhistYear}:
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={taxCreditCarriedOverStr}
+                      onChange={(e) => setTaxCreditCarriedOverStr(e.target.value)}
+                      placeholder="0.00"
+                      className="w-24 text-right font-mono text-xs bg-white border border-slate-300 rounded px-2 py-1 focus:outline-hidden focus:border-amber-500 font-semibold"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-amber-200">
+                    <span className="font-bold text-slate-900">ภาษีสุทธิต้องชำระ:</span>
+                    <span className="font-mono font-black text-base text-rose-800 bg-rose-100 px-2.5 py-1 rounded border border-rose-300">
+                      ฿ {formatCurrency(Math.abs(netTaxPayable))}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -441,14 +553,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
               <div className="space-y-1">
                 <div className="font-bold text-sm">
                   {netTaxPayable > 0
-                    ? `ภาษีขาย (${formatCurrency(salesVat)}) มากกว่า ภาษีซื้อ (${formatCurrency(purchaseVat)}) = มียอดภาษีที่ต้องชำระ (ยอดเสียภาษี) ทั้งสิ้น ${formatCurrency(netTaxPayable)} บาท`
+                    ? `ภาษีขาย (${formatCurrency(salesVat)}) มากกว่า ภาษีซื้อ (${formatCurrency(purchaseVat)}) = ยอดภาษีสุทธิต้องชำระทั้งสิ้น ${formatCurrency(netTaxPayable)} บาท`
                     : netTaxPayable < 0
                     ? `ภาษีซื้อ (${formatCurrency(purchaseVat)}) มากกว่า ภาษีขาย (${formatCurrency(salesVat)}) = มีภาษีชำระเกิน (เครดิตยกไป) จำนวน ${formatCurrency(Math.abs(netTaxPayable))} บาท`
                     : `ภาษีขายเท่ากับภาษีซื้อ (${formatCurrency(salesVat)} บาท) = ไม่มียอดภาษีต้องชำระเพิ่มเติม`}
                 </div>
                 <div className="text-xs text-slate-600">
                   {netTaxPayable > 0
-                    ? '* ต้องยื่นแบบแสดงรายการภาษีมูลค่าเพิ่ม (ภ.พ.30) และนำส่งเงินภาษีต่อกรมสรรพากรภายในวันที่ 15 ของเดือนถัดไป (หรือวันที่ 23 หากยื่นผ่านอินเทอร์เน็ต)'
+                    ? '* คำนวณตามแบบ ภ.พ.30 ของกรมสรรพากร: ภาษีขาย 7% หัก ภาษีซื้อ 7% นำส่งต่อกรมสรรพากรภายในวันที่ 15 ของเดือนถัดไป (หรือวันที่ 23 หากยื่นผ่านระบบอินเทอร์เน็ต E-FILING)'
                     : netTaxPayable < 0
                     ? '* สามารถเลือกขอคืนเงินภาษีมูลค่าเพิ่ม หรือนำยอดภาษีชำระเกินนี้ไปหักกลบเป็นเครดิตภาษีในเดือนถัดไปได้ตามแบบ ภ.พ.30'
                     : '* ยื่นแบบ ภ.พ.30 ตามปกติโดยไม่ต้องชำระเงินภาษีเพิ่ม'}
@@ -525,7 +637,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                         {formatCurrency(salesVat)}
                       </td>
                       <td className="border border-slate-300 px-3 py-2.5 text-right font-mono text-slate-700">
-                        {formatCurrency(salesSummary.totalAmount)}
+                        {formatCurrency(roundToTwoDecimals(salesTaxable + salesVat))}
                       </td>
                     </tr>
 
@@ -543,17 +655,17 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                         {formatCurrency(purchaseVat)}
                       </td>
                       <td className="border border-slate-300 px-3 py-2.5 text-right font-mono text-slate-700">
-                        {formatCurrency(purchaseSummary.totalAmount)}
+                        {formatCurrency(roundToTwoDecimals(purchaseTaxable + purchaseVat))}
                       </td>
                     </tr>
                   </tbody>
                   <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-400">
                     <tr>
                       <td colSpan={2} className="border border-slate-300 px-3 py-3 text-slate-900 font-bold text-sm">
-                        {netTaxPayable >= 0 ? 'ภาษีที่ต้องชำระ (ยอดเสียภาษี = ภาษีขาย - ภาษีซื้อ)' : 'ภาษีชำระเกิน (เครดิตยกไป = ภาษีซื้อ - ภาษีขาย)'}
+                        {netTaxPayable >= 0 ? 'ยอดภาษีสุทธิต้องชำระ (ภาษีขาย - ภาษีซื้อ)' : 'ภาษีชำระเกิน (เครดิตยกไป = ภาษีซื้อ - ภาษีขาย)'}
                       </td>
                       <td className="border border-slate-300 px-3 py-3 text-right font-mono text-slate-700">
-                        ส่วนต่าง {formatCurrency(Math.abs(salesTaxable - purchaseTaxable))}
+                        ส่วนต่าง {formatCurrency(Math.abs(roundToTwoDecimals(salesTaxable - purchaseTaxable)))}
                       </td>
                       <td className="border border-slate-300 px-3 py-3 text-right font-mono text-base font-black text-rose-700 bg-rose-50">
                         {formatCurrency(Math.abs(netTaxPayable))}

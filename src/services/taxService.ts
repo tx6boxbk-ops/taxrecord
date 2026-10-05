@@ -363,15 +363,17 @@ export async function getYearlyTaxOverview(year: number): Promise<MonthlyOvervie
     const purchaseSummary = calculateSummary(monthPurchases);
     const salesSummary = calculateSummary(monthSales);
 
-    const vatDifference = roundToTwoDecimals(salesSummary.vatAmount - purchaseSummary.vatAmount);
+    const purchaseVat = roundToTwoDecimals(purchaseSummary.taxableAmount * 0.07);
+    const salesVat = roundToTwoDecimals(salesSummary.taxableAmount * 0.07);
+    const vatDifference = roundToTwoDecimals(salesVat - purchaseVat);
 
     result.push({
       month: m,
       purchaseTaxable: purchaseSummary.taxableAmount,
-      purchaseVat: purchaseSummary.vatAmount,
+      purchaseVat,
       purchaseCount: purchaseSummary.count,
       salesTaxable: salesSummary.taxableAmount,
-      salesVat: salesSummary.vatAmount,
+      salesVat,
       salesCount: salesSummary.count,
       vatDifference,
     });
