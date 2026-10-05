@@ -149,18 +149,18 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Configuration & Action Bar (Hidden on Print) */}
-      <div className="no-print space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
+      <div className="no-print space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white px-4 py-3 sm:px-5 rounded-xl border border-slate-200 shadow-2xs">
           <div>
             <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-teal-700" />
-              <h2 className="text-xl font-bold text-slate-900">
+              <FileText className="w-4 h-4 text-teal-700" />
+              <h2 className="text-lg font-bold text-slate-900">
                 รายงานภาษี (Tax Reports)
               </h2>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-0.5">
               สร้างและส่งออกรายงานภาษีซื้อ/ภาษีขาย ตามแบบกรมสรรพากร (ภ.พ.30)
             </p>
           </div>
@@ -174,7 +174,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                   ? purchaseRecords.length === 0 && salesRecords.length === 0
                   : sortedRecords.length === 0)
               }
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>ส่งออก Excel (.xlsx)</span>
@@ -188,7 +188,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                   ? purchaseRecords.length === 0 && salesRecords.length === 0
                   : sortedRecords.length === 0)
               }
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-700 hover:bg-rose-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-700 hover:bg-rose-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>ดาวน์โหลด PDF</span>
@@ -201,7 +201,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                   ? purchaseRecords.length === 0 && salesRecords.length === 0
                   : sortedRecords.length === 0
               }
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>พิมพ์รายงาน</span>
@@ -210,7 +210,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
         </div>
 
         {/* Filter Selection Bar */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        <div className="bg-white px-4 py-2.5 sm:px-5 rounded-xl border border-slate-200 shadow-2xs grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
           <div className="lg:col-span-6">
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               ประเภทรายงานภาษี
@@ -219,7 +219,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
               <button
                 type="button"
                 onClick={() => setReportType('PURCHASE')}
-                className={`flex-1 py-2 px-2 sm:px-3 text-xs font-semibold rounded-lg border transition cursor-pointer whitespace-nowrap text-center ${
+                className={`flex-1 py-1.5 px-2 sm:px-3 text-xs font-semibold rounded-lg border transition cursor-pointer whitespace-nowrap text-center ${
                   reportType === 'PURCHASE'
                     ? 'bg-teal-700 text-white border-teal-700 shadow-xs'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -230,7 +230,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
               <button
                 type="button"
                 onClick={() => setReportType('SALES')}
-                className={`flex-1 py-2 px-2 sm:px-3 text-xs font-semibold rounded-lg border transition cursor-pointer whitespace-nowrap text-center ${
+                className={`flex-1 py-1.5 px-2 sm:px-3 text-xs font-semibold rounded-lg border transition cursor-pointer whitespace-nowrap text-center ${
                   reportType === 'SALES'
                     ? 'bg-indigo-700 text-white border-indigo-700 shadow-xs'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -241,7 +241,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
               <button
                 type="button"
                 onClick={() => setReportType('TAX_PAYABLE')}
-                className={`flex-1 py-2 px-2 sm:px-3 text-xs font-semibold rounded-lg border transition cursor-pointer whitespace-nowrap text-center ${
+                className={`flex-1 py-1.5 px-2 sm:px-3 text-xs font-semibold rounded-lg border transition cursor-pointer whitespace-nowrap text-center ${
                   reportType === 'TAX_PAYABLE'
                     ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -256,8 +256,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               ปีภาษี (พ.ศ.)
             </label>
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs">
-              <Calendar className="w-4 h-4 text-slate-500" />
+            <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs">
+              <Calendar className="w-3.5 h-3.5 text-slate-500" />
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -276,8 +276,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               รอบเดือนภาษี (จากชีตด้านล่าง)
             </label>
-            <div className="flex items-center gap-2 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200 text-xs">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-700 shrink-0" />
+            <div className="flex items-center gap-2 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-xs">
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
               <span className="font-bold text-emerald-900 font-mono">
                 {selectedMonth} พ.ศ. {buddhistYear}
               </span>
@@ -287,7 +287,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
 
         {/* Business Settings Notice */}
         {(!settings?.taxpayerId || settings.taxpayerId.length !== 13) && (
-          <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl flex items-center gap-2.5 text-xs text-amber-800">
+          <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl flex items-center gap-2 text-xs text-amber-800">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
               ข้อมูลหัวกระดาษของกิจการยังไม่สมบูรณ์ กรุณาไปที่เมนู <strong>ตั้งค่ากิจการ</strong>{' '}
@@ -298,42 +298,44 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
       </div>
 
       {/* Official Tax Report Printable Document Canvas */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 md:p-8 print:border-none print:shadow-none print:p-0">
-        {/* Report Header */}
-        <div className="border-b-2 border-slate-800 pb-4 mb-4 text-slate-900">
-          <div className="text-center">
-            <h1 className="text-lg md:text-xl font-bold tracking-tight">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-3.5 sm:p-5 print:border-none print:shadow-none print:p-0">
+        {/* Compact Space-Efficient Report Header */}
+        <div className="border-b border-slate-400 pb-2 mb-2 text-slate-900">
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 border-b border-slate-200 pb-1 mb-1.5">
+            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
               {reportType === 'PURCHASE'
                 ? 'รายงานภาษีซื้อ'
                 : reportType === 'SALES'
                 ? 'รายงานภาษีขาย'
                 : 'รายงานสรุปภาษีที่ต้องจ่าย (คำนวณภาษีมูลค่าเพิ่ม ภ.พ.30)'}
             </h1>
-            <p className="text-xs font-medium text-slate-600 mt-1">
+            <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
               เดือนภาษี {selectedMonth} พ.ศ. {buddhistYear}
-            </p>
+            </span>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-            <div>
-              <span className="font-semibold text-slate-700">ชื่อผู้ประกอบการ: </span>
-              <span className="font-bold text-slate-900">
-                {settings?.businessName || 'ยังไม่ได้ระบุชื่อกิจการ'}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+            <div className="truncate">
+              <span className="text-slate-500">ชื่อผู้ประกอบการ: </span>
+              <span className="font-bold text-slate-900" title={settings?.businessName}>
+                {settings?.businessName || 'ยังไม่ได้ระบุ'}
               </span>
             </div>
             <div>
-              <span className="font-semibold text-slate-700">เลขประจำตัวผู้เสียภาษีอากร: </span>
+              <span className="text-slate-500">เลขประจำตัวผู้เสียภาษี: </span>
               <span className="font-mono font-bold text-slate-900">
                 {settings?.taxpayerId || 'ยังไม่ได้ระบุ'}
               </span>
             </div>
-            <div>
-              <span className="font-semibold text-slate-700">ชื่อสถานประกอบการ: </span>
-              <span>{settings?.businessName || '-'}</span>
+            <div className="truncate">
+              <span className="text-slate-500">ชื่อสถานประกอบการ: </span>
+              <span className="text-slate-800" title={settings?.businessName}>
+                {settings?.businessName || '-'}
+              </span>
             </div>
             <div>
-              <span className="font-semibold text-slate-700">สถานประกอบการ: </span>
-              <span>
+              <span className="text-slate-500">สถานประกอบการ: </span>
+              <span className="text-slate-800 font-medium">
                 {settings?.branchType === 'HEAD'
                   ? 'สำนักงานใหญ่'
                   : `สาขาที่ ${settings?.branchNumber || '00000'}`}
@@ -688,11 +690,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                   <th className="border border-slate-300 px-2 py-2 text-right w-24" rowSpan={2}>
                     มูลค่าสินค้า/บริการ
                   </th>
-                  <th className="border border-slate-300 px-2 py-2 text-right w-20" rowSpan={2}>
-                    จำนวนภาษีมูลค่าเพิ่ม
-                  </th>
                   <th className="border border-slate-300 px-2 py-2 text-right w-24" rowSpan={2}>
-                    จำนวนเงินรวม
+                    จำนวนภาษีมูลค่าเพิ่ม
                   </th>
                 </tr>
                 <tr>
@@ -714,7 +713,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                 {sortedRecords.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={10}
                       className="border border-slate-300 px-4 py-8 text-center text-slate-400"
                     >
                       ไม่มีรายการภาษีสำหรับเดือนนี้
@@ -771,9 +770,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                         <td className="border border-slate-300 px-2 py-1.5 text-right font-mono font-medium text-slate-900">
                           {formatCurrency(r.vatAmount)}
                         </td>
-                        <td className="border border-slate-300 px-2 py-1.5 text-right font-mono text-slate-900 font-semibold">
-                          {formatCurrency(r.totalAmount)}
-                        </td>
                       </tr>
                     );
                   })
@@ -793,9 +789,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ onShowToast }) => {
                   </td>
                   <td className="border border-slate-300 px-2 py-2 text-right font-mono">
                     {formatCurrency(summary.vatAmount)}
-                  </td>
-                  <td className="border border-slate-300 px-2 py-2 text-right font-mono">
-                    {formatCurrency(summary.totalAmount)}
                   </td>
                 </tr>
               </tfoot>
