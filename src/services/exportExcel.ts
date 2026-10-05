@@ -242,3 +242,52 @@ export function exportSalesTaxToExcel(
 
   return filename;
 }
+
+export function exportTaxPayableToExcel(
+  purchaseRecords: PurchaseTaxRecord[],
+  salesRecords: SalesTaxRecord[],
+  settings: BusinessSettings,
+  year: number,
+  month: number
+): string {
+  const beYear = toBuddhistYear(year);
+  const monthName = getThaiMonthName(month);
+  const filename = `TaxPayable_${year}_${String(month).padStart(2, '0')}.xlsx`;
+
+  const wb = XLSX.utils.book_new();
+
+  const purchaseSummary = calculateSummary(purchaseRecords);
+  const salesSummary = calculateSummary(salesRecords);
+  const netTax = Number((salesSummary.vatAmount - purchaseSummary.vatAmount).toFixed(2));
+
+  // Sheet 1: สรุปภาษีที่ต้องจ่าย
+  const summaryData: Array<Array<XLSX.CellObject | string>> = [
+    ['รายงานสรุปภาษีที่ต้องจ่าย (คำนวณภาษีมูลค่าเพิ่ม ภ.พ.30)'],
+    [`ชื่อผู้ประกอบการ: ${settings.businessName || '-'}`, '', `เลขประจำตัวผู้เสียภาษี: ${settings.taxpayerId || '-'}`],
+    [`สถานประกอบการ: ${settings.branchType === 'HEAD' ? 'สำนักงานใหญ่' : 'สาขาที่ ' + (settings.branchNumber || '00000')}`],
+    [`ประจำเดือนภาษี: ${monthName} พ.ศ. ${beYear}`],
+    [],
+    ['รายการคำนวณภาษี', 'มูลค่าสินค้า/บริการ (ก่อน VAT)', 'ภาษีมูลค่าเพิ่ม (VAT)', 'จำนวนรายการ'],
+    ['1. ยอดขายและภาษีขาย (Output Tax)', toNumberCell(salesSummary.taxableAmount), toNumberCell(salesSummary.vatAmount), `${salesSummary.count} รายการ`],
+    ['2. ยอดซื้อและภาษีซื้อ (Input Tax)', toNumberCell(purchaseSummary.taxableAmount), toNumberCell(purchaseSummary.vatAmount), `${purchaseSummary.count} รายการ`],
+    [],
+    [
+      netTax >= 0 ? 'สรุป: ยอดเสียภาษี (ภาษีที่ต้องชำระ)' : 'สรุป: ภาษีชำระเกิน (เครดิตยกไป)',
+      '',
+      toNumberCell(Math.abs(netTax)),
+      netTax >= 0 ? 'ภาษีขายมากกว่าภาษีซื้อ (นำส่งกรมสรรพากร)' : 'ภาษีซื้อมากกว่าภาษีขาย (ขอคืน/เครดิตยกไป)',
+    ],
+  ];
+
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+  wsSummary['!cols'] = [
+    { wch: 36 },
+    { wch: 28 },
+    { wch: 24 },
+    { wch: 40 },
+  ];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'สรุปภาษีที่ต้องจ่าย');
+
+  XLSX.writeFile(wb, filename);
+  return filename;
+}

@@ -421,3 +421,249 @@ export async function exportSalesTaxToPdf(
   pdf.save(filename);
   return filename;
 }
+
+export async function exportTaxPayableToPdf(
+  purchaseRecords: PurchaseTaxRecord[],
+  salesRecords: SalesTaxRecord[],
+  settings: BusinessSettings,
+  year: number,
+  month: number
+): Promise<string> {
+  const beYear = toBuddhistYear(year);
+  const monthName = getThaiMonthName(month);
+  const filename = `TaxPayable_${year}_${String(month).padStart(2, '0')}.pdf`;
+
+  const purchaseSummary = calculateSummary(purchaseRecords);
+  const salesSummary = calculateSummary(salesRecords);
+  const netTax = Number((salesSummary.vatAmount - purchaseSummary.vatAmount).toFixed(2));
+
+  const canvasWidth = 2376;
+  const canvasHeight = 1680;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context not available');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  const fontFamily = "'Sarabun', 'Leelawadee UI', 'Tahoma', sans-serif";
+  const marginX = 120;
+  let currentY = 90;
+
+  // Header Title
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `bold 42px ${fontFamily}`;
+  ctx.textAlign = 'center';
+  ctx.fillText('รายงานสรุปภาษีที่ต้องจ่าย (คำนวณภาษีมูลค่าเพิ่ม ภ.พ.30)', canvasWidth / 2, currentY);
+
+  currentY += 45;
+  ctx.font = `24px ${fontFamily}`;
+  ctx.fillStyle = '#475569';
+  ctx.fillText(`สำหรับเดือนภาษี ${monthName} พ.ศ. ${beYear} (ค.ศ. ${year})`, canvasWidth / 2, currentY);
+
+  // Business Information Bar
+  currentY += 60;
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(marginX, currentY, canvasWidth - marginX * 2, 110);
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(marginX, currentY, canvasWidth - marginX * 2, 110);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1e293b';
+  ctx.font = `bold 24px ${fontFamily}`;
+  ctx.fillText(`ชื่อผู้ประกอบการ: ${settings.businessName || '-'}`, marginX + 30, currentY + 45);
+  ctx.font = `22px ${fontFamily}`;
+  const branchLabel = settings.branchType === 'HEAD' ? 'สำนักงานใหญ่' : `สาขาที่ ${settings.branchNumber || '00000'}`;
+  ctx.fillText(`สถานประกอบการ: ${branchLabel}`, marginX + 30, currentY + 85);
+
+  ctx.textAlign = 'right';
+  ctx.font = `bold 24px ${fontFamily}`;
+  ctx.fillText(`เลขประจำตัวผู้เสียภาษี: ${settings.taxpayerId || '-'}`, canvasWidth - marginX - 30, currentY + 45);
+
+  // Visual Boxes
+  currentY += 160;
+
+  // Left Box: ยอดขาย & ยอดซื้อ
+  const box1X = marginX + 150;
+  const box1W = 750;
+  const box1H = 260;
+
+  const engMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthYearLabel = `${engMonths[month - 1]}-${String(beYear).slice(-2)}`;
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `bold 32px ${fontFamily}`;
+  ctx.fillText(monthYearLabel, box1X + box1W / 2, currentY - 20);
+
+  // Outer border box 1
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(box1X, currentY, box1W, box1H);
+
+  // Headers
+  ctx.fillStyle = '#a9d18e';
+  ctx.fillRect(box1X, currentY, box1W / 2 - 4, 90);
+  ctx.fillStyle = '#ffc000';
+  ctx.fillRect(box1X + box1W / 2 + 4, currentY, box1W / 2 - 4, 90);
+
+  // Red separator in box 1
+  ctx.fillStyle = '#dc2626';
+  ctx.fillRect(box1X + box1W / 2 - 4, currentY, 8, box1H);
+  ctx.fillRect(box1X, currentY + box1H - 12, box1W, 12);
+
+  // Values background
+  ctx.fillStyle = '#f2f8ee';
+  ctx.fillRect(box1X, currentY + 90, box1W / 2 - 4, box1H - 102);
+  ctx.fillStyle = '#fffdf0';
+  ctx.fillRect(box1X + box1W / 2 + 4, currentY + 90, box1W / 2 - 4, box1H - 102);
+
+  // Box 1 text
+  ctx.fillStyle = '#000000';
+  ctx.font = `bold 28px ${fontFamily}`;
+  ctx.fillText('ยอดขาย', box1X + box1W / 4, currentY + 55);
+  ctx.fillText('ยอดซื้อ', box1X + (box1W * 3) / 4, currentY + 55);
+
+  ctx.font = `bold 36px 'Courier New', monospace`;
+  ctx.fillText(formatCurrency(salesSummary.taxableAmount), box1X + box1W / 4, currentY + 180);
+  ctx.fillText(formatCurrency(purchaseSummary.taxableAmount), box1X + (box1W * 3) / 4, currentY + 180);
+
+  // Right Box: ภาษีขาย, ภาษีซื้อ, ยอดเสียภาษี (Thick black frame)
+  const box2X = box1X + box1W + 120;
+  const box2W = 850;
+  const box2H = 340;
+
+  // Outer black frame
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(box2X - 16, currentY - 16, box2W + 32, box2H + 32);
+
+  const rowH = 105;
+  // Row 1: ภาษีขาย
+  ctx.fillStyle = '#a9d18e';
+  ctx.fillRect(box2X, currentY, box2W / 2, rowH);
+  ctx.fillStyle = '#e2efda';
+  ctx.fillRect(box2X + box2W / 2, currentY, box2W / 2, rowH);
+
+  // Row 2: ภาษีซื้อ
+  ctx.fillStyle = '#ffc000';
+  ctx.fillRect(box2X, currentY + rowH, box2W / 2, rowH);
+  ctx.fillStyle = '#fff2cc';
+  ctx.fillRect(box2X + box2W / 2, currentY + rowH, box2W / 2, rowH);
+
+  // Cyan divider
+  ctx.fillStyle = '#00b0f0';
+  ctx.fillRect(box2X, currentY + rowH * 2, box2W, 14);
+
+  // Row 3: ยอดเสียภาษี
+  ctx.fillStyle = '#ffff00';
+  ctx.fillRect(box2X, currentY + rowH * 2 + 14, box2W / 2, rowH + 6);
+  ctx.fillStyle = '#fce4d6';
+  ctx.fillRect(box2X + box2W / 2, currentY + rowH * 2 + 14, box2W / 2, rowH + 6);
+
+  // Text in Right Box
+  ctx.fillStyle = '#000000';
+  ctx.textAlign = 'left';
+  ctx.font = `bold 28px ${fontFamily}`;
+  ctx.fillText('ภาษีขาย เดือนนี้', box2X + 30, currentY + 65);
+  ctx.fillText('ภาษีซื้อ เดือนนี้', box2X + 30, currentY + rowH + 65);
+
+  ctx.font = `bold 32px ${fontFamily}`;
+  ctx.fillText('ยอดเสียภาษี', box2X + 30, currentY + rowH * 2 + 14 + 75);
+
+  ctx.textAlign = 'right';
+  ctx.font = `bold 34px 'Courier New', monospace`;
+  ctx.fillText(formatCurrency(salesSummary.vatAmount), box2X + box2W - 30, currentY + 65);
+  ctx.fillText(formatCurrency(purchaseSummary.vatAmount), box2X + box2W - 30, currentY + rowH + 65);
+
+  ctx.font = `bold 44px 'Courier New', monospace`;
+  ctx.fillText(formatCurrency(Math.abs(netTax)), box2X + box2W - 30, currentY + rowH * 2 + 14 + 78);
+
+  // Summary Table Below
+  currentY = currentY + box2H + 80;
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `bold 28px ${fontFamily}`;
+  ctx.textAlign = 'left';
+  ctx.fillText('รายละเอียดผลการคำนวณภาษีมูลค่าเพิ่ม (ภ.พ.30)', marginX, currentY);
+
+  currentY += 25;
+  // Summary table headers
+  const thY = currentY;
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillRect(marginX, thY, canvasWidth - marginX * 2, 55);
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(marginX, thY, canvasWidth - marginX * 2, 55);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = `bold 22px ${fontFamily}`;
+  ctx.fillText('รายการ', marginX + 30, thY + 36);
+  ctx.textAlign = 'right';
+  ctx.fillText('มูลค่าก่อน VAT (บาท)', marginX + 850, thY + 36);
+  ctx.fillText('ภาษีมูลค่าเพิ่ม (บาท)', marginX + 1350, thY + 36);
+  ctx.fillText('สถานะ / ข้อกำหนด', canvasWidth - marginX - 30, thY + 36);
+
+  // Row 1
+  let rY = thY + 55;
+  ctx.strokeRect(marginX, rY, canvasWidth - marginX * 2, 55);
+  ctx.textAlign = 'left';
+  ctx.font = `22px ${fontFamily}`;
+  ctx.fillText(`1. ยอดขายและภาษีขาย (${salesSummary.count} รายการ)`, marginX + 30, rY + 36);
+  ctx.textAlign = 'right';
+  ctx.font = `22px 'Courier New', monospace`;
+  ctx.fillText(formatCurrency(salesSummary.taxableAmount), marginX + 850, rY + 36);
+  ctx.fillText(formatCurrency(salesSummary.vatAmount), marginX + 1350, rY + 36);
+  ctx.font = `20px ${fontFamily}`;
+  ctx.fillText('ภาษีขายที่ต้องนำส่ง (Output Tax)', canvasWidth - marginX - 30, rY + 36);
+
+  // Row 2
+  rY += 55;
+  ctx.strokeRect(marginX, rY, canvasWidth - marginX * 2, 55);
+  ctx.textAlign = 'left';
+  ctx.font = `22px ${fontFamily}`;
+  ctx.fillText(`2. ยอดซื้อและภาษีซื้อ (${purchaseSummary.count} รายการ)`, marginX + 30, rY + 36);
+  ctx.textAlign = 'right';
+  ctx.font = `22px 'Courier New', monospace`;
+  ctx.fillText(formatCurrency(purchaseSummary.taxableAmount), marginX + 850, rY + 36);
+  ctx.fillText(formatCurrency(purchaseSummary.vatAmount), marginX + 1350, rY + 36);
+  ctx.font = `20px ${fontFamily}`;
+  ctx.fillText('ภาษีซื้อที่นำมาหัก (Input Tax)', canvasWidth - marginX - 30, rY + 36);
+
+  // Row 3 Totals
+  rY += 55;
+  ctx.fillStyle = '#f1f5f9';
+  ctx.fillRect(marginX, rY, canvasWidth - marginX * 2, 65);
+  ctx.strokeRect(marginX, rY, canvasWidth - marginX * 2, 65);
+  ctx.fillStyle = '#0f172a';
+  ctx.textAlign = 'left';
+  ctx.font = `bold 24px ${fontFamily}`;
+  ctx.fillText(netTax >= 0 ? 'สรุป: ภาษีที่ต้องชำระ (ยอดเสียภาษี)' : 'สรุป: ภาษีชำระเกิน (เครดิตยกไป)', marginX + 30, rY + 42);
+  ctx.textAlign = 'right';
+  ctx.font = `bold 28px 'Courier New', monospace`;
+  ctx.fillText(formatCurrency(Math.abs(netTax)), marginX + 1350, rY + 42);
+  ctx.font = `bold 20px ${fontFamily}`;
+  ctx.fillText(netTax >= 0 ? 'ยื่นแบบ ภ.พ.30 พร้อมชำระภาษี' : 'ขอคืนเงินภาษีหรือยกยอดไปเดือนหน้า', canvasWidth - marginX - 30, rY + 42);
+
+  // Footer
+  ctx.textAlign = 'left';
+  ctx.font = `18px ${fontFamily}`;
+  ctx.fillStyle = '#64748b';
+  ctx.fillText('* จัดทำตามหลักเกณฑ์ภาษีมูลค่าเพิ่ม กรมสรรพากรแห่งประเทศไทย', marginX, canvasHeight - 60);
+  ctx.textAlign = 'right';
+  ctx.fillText(`พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH')}`, canvasWidth - marginX, canvasHeight - 60);
+
+  const pdf = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const imgData = canvas.toDataURL('image/jpeg', 0.95);
+  pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
+
+  pdf.save(filename);
+  return filename;
+}
