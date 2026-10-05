@@ -28,6 +28,7 @@ import {
   checkInvoiceNumberDuplicate,
 } from '../services/invoiceNumberService';
 import { SalesTaxRecord } from '../types';
+import { sortPartners } from '../utils/partnerSort';
 import {
   calculateVatExclusive,
   calculateVatInclusive,
@@ -119,7 +120,8 @@ export const SalesTaxPage: React.FC<SalesTaxPageProps> = ({ onShowToast }) => {
 
   // Live Queries
   const allSales = useLiveQuery(() => db.salesTaxRecords.toArray()) || [];
-  const customers = useLiveQuery(() => db.customers.orderBy('displayName').toArray()) || [];
+  const rawCustomers = useLiveQuery(() => db.customers.toArray()) || [];
+  const customers = sortPartners(rawCustomers);
 
   // Filter records strictly by global selected month and year
   const filteredRecords = allSales.filter((r) => {

@@ -1,8 +1,10 @@
 import { db, generateId } from '../db/db';
 import { Supplier } from '../types';
+import { sortPartners } from '../utils/partnerSort';
 
 export async function getSuppliers(): Promise<Supplier[]> {
-  return await db.suppliers.orderBy('displayName').toArray();
+  const all = await db.suppliers.toArray();
+  return sortPartners(all);
 }
 
 export async function getSupplier(id: string): Promise<Supplier | undefined> {
@@ -32,6 +34,16 @@ export async function createSupplier(
   data: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<Supplier> {
   const now = new Date().toISOString();
+
+  let sortOrder = data.sortOrder;
+  if (sortOrder === undefined) {
+    const existing = await db.suppliers.toArray();
+    const maxOrder = existing.reduce((max, s) => {
+      return typeof s.sortOrder === 'number' && s.sortOrder > max ? s.sortOrder : max;
+    }, -1);
+    sortOrder = maxOrder + 1;
+  }
+
   const newSupplier: Supplier = {
     ...data,
     id: generateId(),
@@ -40,6 +52,7 @@ export async function createSupplier(
     taxpayerId: String(data.taxpayerId || '').trim(),
     branchNumber: String(data.branchNumber || '00000').trim(),
     defaultVatRate: data.defaultVatRate !== undefined ? Number(data.defaultVatRate) : 7,
+    sortOrder,
     createdAt: now,
     updatedAt: now,
   };
@@ -67,8 +80,37 @@ export async function updateSupplier(
   if (data.taxpayerId !== undefined) updated.taxpayerId = String(data.taxpayerId).trim();
   if (data.branchNumber !== undefined) updated.branchNumber = String(data.branchNumber).trim();
   if (data.defaultVatRate !== undefined) updated.defaultVatRate = Number(data.defaultVatRate);
+  if (data.sortOrder !== undefined) updated.sortOrder = Number(data.sortOrder);
 
   await db.suppliers.update(id, updated);
+}
+
+/**
+ * Reorders all suppliers based on the provided ordered ID array
+ */
+export async function reorderSuppliers(orderedIds: string[]): Promise<void> {
+  await db.transaction('rw', db.suppliers, async () => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.suppliers.update(orderedIds[i], { sortOrder: i });
+    }
+  });
+}
+
+/**
+ * Moves a supplier one step up or down in the custom order
+ */
+export async function moveSupplier(id: string, direction: 'up' | 'down'): Promise<void> {
+  const all = sortPartners(await db.suppliers.toArray());
+  const currentIndex = all.findIndex((s) => s.id === id);
+  if (currentIndex === -1) return;
+
+  const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+  if (targetIndex < 0 || targetIndex >= all.length) return;
+
+  const [item] = all.splice(currentIndex, 1);
+  all.splice(targetIndex, 0, item);
+
+  await reorderSuppliers(all.map((s) => s.id));
 }
 
 /**

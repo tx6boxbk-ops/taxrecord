@@ -9,6 +9,7 @@ export interface Supplier {
   phone: string;
   note: string;
   defaultVatRate?: number; // อัตราภาษีมูลค่าเพิ่มตั้งต้น (%) ค่าปกติ 7
+  sortOrder?: number; // ลำดับการจัดเรียงอิสระที่ผู้ใช้กำหนด
   createdAt: string;
   updatedAt: string;
 }

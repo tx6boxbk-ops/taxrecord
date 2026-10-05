@@ -10,6 +10,9 @@ import {
   Phone,
   MapPin,
   FileText,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
 } from 'lucide-react';
 import { db } from '../db/db';
 import {
@@ -18,8 +21,11 @@ import {
   deleteSupplier,
   checkSupplierUsage,
   checkDuplicateSupplier,
+  reorderSuppliers,
+  moveSupplier,
 } from '../services/supplierService';
 import { Supplier } from '../types';
+import { sortPartners } from '../utils/partnerSort';
 import { formatBranchNumber } from '../utils/validation';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -31,6 +37,10 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ onShowToast }) => 
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+
+  // Reorder / Drag and Drop state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null);
@@ -48,10 +58,11 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ onShowToast }) => 
   const [defaultVatRate, setDefaultVatRate] = useState<number | string>(7);
   const [formError, setFormError] = useState('');
 
-  // Live query from IndexedDB
-  const suppliers = useLiveQuery(() => db.suppliers.toArray()) || [];
+  // Live query from IndexedDB with custom free ordering
+  const rawSuppliers = useLiveQuery(() => db.suppliers.toArray()) || [];
+  const sortedSuppliers = sortPartners(rawSuppliers);
 
-  const filteredSuppliers = suppliers.filter((s) => {
+  const filteredSuppliers = sortedSuppliers.filter((s) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -61,6 +72,53 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ onShowToast }) => 
       s.branchNumber.includes(q)
     );
   });
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverId !== id) {
+      setDragOverId(id);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const list = [...sortedSuppliers];
+    const fromIndex = list.findIndex((s) => s.id === draggedId);
+    const toIndex = list.findIndex((s) => s.id === targetId);
+
+    if (fromIndex !== -1 && toIndex !== -1) {
+      const [moved] = list.splice(fromIndex, 1);
+      list.splice(toIndex, 0, moved);
+      await reorderSuppliers(list.map((s) => s.id));
+      onShowToast('ย้ายลำดับผู้ขายเรียบร้อยแล้ว', 'info');
+    }
+
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleMove = async (id: string, direction: 'up' | 'down') => {
+    await moveSupplier(id, direction);
+    onShowToast(direction === 'up' ? 'เลื่อนลำดับขึ้นแล้ว' : 'เลื่อนลำดับลงแล้ว', 'info');
+  };
 
   const openAddModal = () => {
     setEditingSupplier(null);
@@ -227,9 +285,13 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ onShowToast }) => 
 
       {/* Suppliers Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-600">
+        <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+          <span className="font-semibold">
             พบทั้งหมด {filteredSuppliers.length} รายการ
+          </span>
+          <span className="text-[11px] text-slate-500 flex items-center gap-1.5">
+            <GripVertical className="w-3.5 h-3.5 text-slate-400" />
+            <span>คลิกลากเมาส์ที่ไอคอน หรือกดลูกศรขึ้น-ลงเพื่อย้ายลำดับอย่างอิสระ</span>
           </span>
         </div>
 
@@ -249,7 +311,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ onShowToast }) => 
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-slate-600 bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3 font-semibold w-12 text-center">ลำดับ</th>
+                  <th className="px-3 py-3 font-semibold w-24 text-center">ลำดับ / ย้าย</th>
                   <th className="px-4 py-3 font-semibold">ชื่อผู้ขาย / นิติบุคคล</th>
                   <th className="px-4 py-3 font-semibold">เลขประจำตัวผู้เสียภาษี</th>
                   <th className="px-4 py-3 font-semibold">สถานประกอบการ</th>
@@ -259,9 +321,68 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ onShowToast }) => 
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredSuppliers.map((s, idx) => (
-                  <tr key={s.id} className="hover:bg-slate-50 transition">
-                    <td className="px-4 py-3 text-center text-slate-400 text-xs">
-                      {idx + 1}
+                  <tr
+                    key={s.id}
+                    draggable={!searchQuery}
+                    onDragStart={(e) => handleDragStart(e, s.id)}
+                    onDragOver={(e) => handleDragOver(e, s.id)}
+                    onDrop={(e) => handleDrop(e, s.id)}
+                    onDragEnd={handleDragEnd}
+                    className={`transition ${
+                      draggedId === s.id
+                        ? 'opacity-30 bg-teal-50/70'
+                        : dragOverId === s.id
+                        ? 'bg-teal-50 ring-2 ring-inset ring-teal-500'
+                        : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <td className="px-3 py-2 text-center text-slate-500 text-xs">
+                      <div className="flex items-center justify-center gap-1">
+                        {/* Drag Handle */}
+                        <div
+                          className={`p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition ${
+                            searchQuery ? 'opacity-30 cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'
+                          }`}
+                          title={searchQuery ? 'ล้างการค้นหาเพื่อลากย้ายลำดับ' : 'คลิกลากเพื่อย้ายลำดับ'}
+                        >
+                          <GripVertical className="w-3.5 h-3.5" />
+                        </div>
+
+                        {/* Sequence number */}
+                        <span className="font-mono w-5 text-right font-medium text-slate-600">
+                          {idx + 1}
+                        </span>
+
+                        {/* Up / Down Buttons */}
+                        <div className="flex flex-col gap-0.5 ml-1">
+                          <button
+                            type="button"
+                            disabled={idx === 0 || !!searchQuery}
+                            onClick={() => handleMove(s.id, 'up')}
+                            className={`p-0.5 rounded transition ${
+                              idx === 0 || !!searchQuery
+                                ? 'text-slate-200 cursor-not-allowed'
+                                : 'text-slate-500 hover:text-teal-700 hover:bg-slate-200 cursor-pointer'
+                            }`}
+                            title="เลื่อนขึ้น"
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === filteredSuppliers.length - 1 || !!searchQuery}
+                            onClick={() => handleMove(s.id, 'down')}
+                            className={`p-0.5 rounded transition ${
+                              idx === filteredSuppliers.length - 1 || !!searchQuery
+                                ? 'text-slate-200 cursor-not-allowed'
+                                : 'text-slate-500 hover:text-teal-700 hover:bg-slate-200 cursor-pointer'
+                            }`}
+                            title="เลื่อนลง"
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-900">
                       <div>{s.displayName}</div>

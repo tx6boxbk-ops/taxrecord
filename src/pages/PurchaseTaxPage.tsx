@@ -28,6 +28,7 @@ import {
   checkInvoiceNumberDuplicate,
 } from '../services/invoiceNumberService';
 import { PurchaseTaxRecord, Supplier } from '../types';
+import { sortPartners } from '../utils/partnerSort';
 import {
   calculateVatExclusive,
   calculateVatInclusive,
@@ -95,7 +96,8 @@ export const PurchaseTaxPage: React.FC<PurchaseTaxPageProps> = ({ onShowToast })
 
   // Live Queries
   const allPurchases = useLiveQuery(() => db.purchaseTaxRecords.toArray()) || [];
-  const suppliers = useLiveQuery(() => db.suppliers.orderBy('displayName').toArray()) || [];
+  const rawSuppliers = useLiveQuery(() => db.suppliers.toArray()) || [];
+  const suppliers = sortPartners(rawSuppliers);
 
   // Filter records strictly by global selected month and year
   const filteredRecords = allPurchases.filter((r) => {
